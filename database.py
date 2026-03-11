@@ -26,3 +26,7 @@ def add_win(user_id, name):
 
 def reset_user_wins(user_id):
     db.update({'wins': 0}, User.id == user_id)
+
+# الدالة الجديدة لتصفير نقاط جميع اللاعبين عند انتهاء الموسم أو فوز ملك الروليت
+def reset_all_players_wins():
+    db.update({'wins': 0})
