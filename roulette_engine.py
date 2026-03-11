@@ -1,57 +1,69 @@
 import random
 import asyncio
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.constants import ParseMode
-from database import add_win, reset_user_wins, get_user_wins
+from database import add_win, reset_user_wins
 from config import POINTS_TO_WIN
 
 class RouletteGame:
     def __init__(self):
         self.is_active = False
         self.starter_id = None
-        self.players = {}  # نستخدم قاموس لمنع التكرار والحفاظ على السرعة {user_id: name}
+        self.players = {} # {user_id: name}
 
     def add_player(self, user_id, name):
-        # تسجيل سريع في الذاكرة
         self.players[user_id] = name
 
     async def run_elimination(self, update: Update, context):
         if not self.players:
-            await update.message.reply_text("❌ لا يوجد مشاركين في الروليت!")
+            await update.message.reply_text("❌ لم يسجل أحد في الروليت بعد!")
             return
 
         all_players = list(self.players.items())
+        # خلط الأسماء لضمان العشوائية المطلقة
         random.shuffle(all_players)
         
-        # اختيار الفائز عشوائياً والباقي مستبعدين (مثل نظام TON)
+        # اختيار الفائز
         winner_id, winner_name = random.choice(all_players)
-        # نختار عينة للعرض كـ "مستبعدين" لزيادة الإثارة
+        # اختيار المستبعدين (بحد أقصى 8 للعرض بشكل أنيق)
         others = [p for p in all_players if p[0] != winner_id]
-        display_excluded = others[:8]  # عرض أول 8 مستبعدين فقط
+        excluded_list = others[:8]
 
-        status_msg = "<b>🔄 بدأت عملية التصفية الملكية...</b>\n\n"
-        sent_msg = await update.message.reply_text(status_msg, parse_mode=ParseMode.HTML)
+        header = "<b>-> قائمة المشاركين بالروليت:</b>\n\n"
+        sent_msg = await update.message.reply_text(header, parse_mode=ParseMode.HTML)
 
-        # تأثير الاستبعاد (الدراما)
-        for i, (p_id, p_name) in enumerate(display_excluded):
-            status_msg += f"{i+1} <b>مستبعد:</b> <a href='tg://user?id={p_id}'>{p_name}</a>\n"
-            if i % 2 == 0: # تحديث الرسالة كل اسمين لتجنب الحظر
-                await sent_msg.edit_text(status_msg, parse_mode=ParseMode.HTML)
-                await asyncio.sleep(0.5)
+        current_display = header
+        # محاكاة تأثير الاستبعاد التدريجي لبوت TON
+        for i, (p_id, p_name) in enumerate(excluded_list, 1):
+            emoji = random.choice(["👓", "👀", "👤", "🧤"])
+            current_display += f"{i} <b>مستبعد:</b> <a href='tg://user?id={p_id}'>{p_name}</a> {emoji}\n"
+            
+            # تحديث الرسالة كل اسمين لسرعة الأداء وتجنب الحظر
+            if i % 2 == 0:
+                await sent_msg.edit_text(current_display, parse_mode=ParseMode.HTML)
+                await asyncio.sleep(0.7)
 
-        # معالجة الفوز والنقاط
+        # النتيجة النهائية للجولة
         current_wins = add_win(winner_id, winner_name)
         
-        final_text = status_msg + f"\n🏆 <b>الفائز بالجولة:</b> ( <a href='tg://user?id={winner_id}'>{winner_name}</a> )\n"
-        final_text += f"✨ <b>عدد انتصاراته حتى الآن:</b> {current_wins}/{POINTS_TO_WIN}"
-        
-        # تحقق من التتويج الملكي (5 نقاط)
+        final_footer = f"\n<b>- الفائز بالروليت: ( <a href='tg://user?id={winner_id}'>{winner_name}</a> ) 🥳🎉</b>"
+        final_footer += f"\n📊 <b>رصيد النقاط الحالي: {current_wins}/{POINTS_TO_WIN}</b>"
+
+        # إذا وصل للنقطة الخامسة (التتويج الملكي)
         if current_wins >= POINTS_TO_WIN:
-            final_text += f"\n\n👑🎊 <b>تتويج ملك الروليت الأسطوري</b> 🎊👑\n"
-            final_text += f"المقاتل <a href='tg://user?id={winner_id}'>{winner_name}</a> ختم الـ 5 نقاط!"
+            final_footer = (
+                f"\n\n👑 <b>لوحة التتويج الملكي</b> 👑\n"
+                f"━━━━━━━━━━━━━━\n"
+                f"✨ <b>البطل:</b> <a href='tg://user?id={winner_id}'>{winner_name}</a>\n"
+                f"✅ <b>أتمّ 5 انتصارات ساحقة!</b>\n"
+                f"━━━━━━━━━━━━━━\n"
+                f"<b>مبارك اللقب الأسطوري! 🎊🔥</b>"
+            )
             reset_user_wins(winner_id)
 
-        await sent_msg.edit_text(final_text, parse_mode=ParseMode.HTML)
+        await sent_msg.edit_text(current_display + final_footer, parse_mode=ParseMode.HTML)
+        
+        # تصفير الجولة
         self.is_active = False
         self.players = {}
 
