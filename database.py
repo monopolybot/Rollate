@@ -1,7 +1,13 @@
 from tinydb import TinyDB, Query
+import os
 
-# إنشاء قاعدة بيانات سريعة وصغيرة
-db = TinyDB('roulette_db.json')
+# المسار المخصص للـ Volume في Northflank لضمان عدم ضياع البيانات
+db_path = '/app/data/roulette_db.json'
+
+# التأكد من وجود المجلد لتجنب الأخطاء
+os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+db = TinyDB(db_path)
 User = Query()
 
 def get_user_wins(user_id):
