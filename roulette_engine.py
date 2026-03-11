@@ -2,7 +2,8 @@ import random
 import asyncio
 from telegram import Update
 from telegram.constants import ParseMode
-from database import add_win, reset_user_wins
+# إضافة استدعاء الدالة الجديدة من ملف database
+from database import add_win, reset_user_wins, reset_all_players_wins
 from config import POINTS_TO_WIN
 
 class RouletteGame:
@@ -57,13 +58,15 @@ class RouletteGame:
                 f"✨ <b>البطل:</b> <a href='tg://user?id={winner_id}'>{winner_name}</a>\n"
                 f"✅ <b>أتمّ 5 انتصارات ساحقة!</b>\n"
                 f"━━━━━━━━━━━━━━\n"
-                f"<b>مبارك اللقب الأسطوري! 🎊🔥</b>"
+                f"<b>مبارك اللقب الأسطوري! 🎊🔥</b>\n"
+                f"⚠️ <i>تم تصفير نقاط الجميع لبدء منافسة جديدة..</i>"
             )
-            reset_user_wins(winner_id)
+            # تصفير نقاط الجميع لأن الموسم انتهى بتتويج الملك
+            reset_all_players_wins()
 
         await sent_msg.edit_text(current_display + final_footer, parse_mode=ParseMode.HTML)
         
-        # تصفير الجولة
+        # تصفير الجولة الحالية في الذاكرة
         self.is_active = False
         self.players = {}
 
