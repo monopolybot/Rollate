@@ -15,6 +15,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 1. أمر البداية (روليت)
     if text == "روليت":
         if await is_user_admin(update, context):
+            # القفل البرمجي: التحقق من حالة اللعبة الحالية
+            if game_manager.is_active:
+                await update.message.reply_text("⚠️ <b>عذراً!</b> هناك روليت قائمة بالفعل في هذه المجموعة.\nيجب إنهاء الجولة الحالية بكلمة <b>'تم'</b> أولاً.", parse_mode='HTML')
+                return
+
+            # إذا كانت اللعبة غير نشطة، نبدأ جولة جديدة
             game_manager.is_active = True
             game_manager.starter_id = u_id
             await update.message.reply_text("🔥🔥 <b>يا شعب مونوبولي العظيم</b> 🔥🔥\n\nبدأت الروليت! اكتب <b>'انا'</b> للاشتراك", parse_mode='HTML')
