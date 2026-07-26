@@ -37,7 +37,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await game_manager.run_elimination(update, context)
 
 if __name__ == '__main__':
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    # إجبار التطبيق على استخدام التوكن الصريح من config.py حصرياً وتجاهل أي متغيرات بيئة قديمة
+    forced_token = BOT_TOKEN
+    
+    app = ApplicationBuilder().token(forced_token).build()
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
-    print("البوت يعمل الآن بنجاح...")
+    print("البوت يعمل الآن بنجاح بالتوكن المعتمد حصرياً من الملف...")
     app.run_polling()
