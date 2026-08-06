@@ -3,6 +3,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 from config import BOT_TOKEN, ALLOWED_GROUPS, OWNER_ID
 from admin_handler import is_user_admin, can_stop_roulette
 from roulette_engine import game_manager
+from trading_handler import handle_album_photo
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # صمام الأمان: تجاهل التحديثات التي لا تحتوي على رسالة نصية
@@ -42,5 +43,7 @@ if __name__ == '__main__':
     
     app = ApplicationBuilder().token(forced_token).build()
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_album_photo))
+    
     print("البوت يعمل الآن بنجاح بالتوكن المعتمد حصرياً من الملف...")
     app.run_polling()
