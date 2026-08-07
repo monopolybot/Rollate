@@ -1,33 +1,38 @@
 # image_processor.py
-# نظام معالجة الصور واستخراج البطاقات باستخدام pytesseract (خفيف جداً وبدون نماذج ضخمة)
-
 import os
-from PIL import Image
 import pytesseract
-from cards_engine import match_card_text
+from PIL import Image
 
-async def process_user_album_image(image_path):
+async def process_user_album_image(image_path: str):
+    """
+    معالجة صورة الألبوم واستخراج النصوص والبطاقات باستخدام pytesseract مع التقاط الأخطاء بدقة
+    """
     try:
-        # فتح الصورة باستخدام Pillow
+        # التأكد من وجود الصورة
+        if not os.path.exists(image_path):
+            print(f"Error: Image path not found -> {image_path}")
+            return {"status": "error", "message": "Image not found"}
+
+        # فتح الصورة باستخدام PIL
         img = Image.open(image_path)
-        
-        # استخراج النصوص باللغتين العربية والإنجليزية عبر Tesseract
-        # (ملاحظة: ara+eng تدعم النص العربي والإنكليزي معاً)
+
+        # استخراج النصوص باستخدام pytesseract (اللغتين العربية والإنجليزية)
         extracted_text = pytesseract.image_to_string(img, lang='ara+eng')
         
-        # مطابقة النصوص مع البطاقات الـ 21
-        matched_cards = match_card_text(extracted_text)
-        
-        return {
-            "status": "success",
-            "cards": matched_cards
-        }
+        print(f"Extracted Text successfully: {extracted_text[:100]}...") # طباعة عينة للتأكد
+
+        # هنا يمكنك مطابقة النصوص المستخرجة مع قائمة البطاقات لديك
+        # سنقوم بإرجاع النصوص المكتشفة مؤقتاً للتأكد من عمل النظام
+        cards = []
+        # مثال مبسط لاستخراج الكلمات كبطاقات
+        words = extracted_text.split()
+        for word in words:
+            if len(word) > 3:  # تصفية الكلمات القصيرة
+                cards.append({"card": word})
+
+        return {"status": "success", "cards": cards}
+
     except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
-    finally:
-        # تنظيف الصورة المؤقتة بعد الانتهاء
-        if os.path.exists(image_path):
-            os.remove(image_path)
+        # طباعة الخطأ الحقيقي بالتفصيل في السجلات لمعرفته فوراً
+        print(f"CRITICAL ERROR in image_processor: {str(e)}")
+        return {"status": "error", "message": str(e)}
