@@ -57,9 +57,9 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "لا تقم بإضافة تفاصيل طويلة، فقط أطراف الأسماء أو أسماء البطاقات واضحة."
             )
             
-            # الاستدعاء بالطريقة الحديثة والمستقرة للموديل الجديد
+            # التصحيح هنا: استخدام الموديل المستقر والمتاح gemini-2.0-flash
             response = client_ai.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-2.0-flash',
                 contents=[
                     prompt,
                     {
