@@ -1,5 +1,5 @@
 # database_handler.py
-# نظام إدارة وتخزين البطاقات في قاعدة بيانات محلية خفيفة
+# نظام إدارة وتخزين البطاقات مع حفظ الـ ID الحقيقي لمنشن صحيح 100%
 
 import json
 import os
@@ -21,20 +21,21 @@ def save_db(data):
 
 def update_user_cards(user_id, username, new_cards):
     """
-    تحديث بطاقات العضو وحفظ حالتها (ناقص أو زائد) داخل قاموس مرتب لكل بطاقة
+    تحديث بطاقات العضو وحفظ الـ user_id الحقيقي لضمان صحة المنشن
     """
     db = load_db()
     str_user_id = str(user_id)
     
     if str_user_id not in db["users"]:
         db["users"][str_user_id] = {
+            "user_id": user_id,
             "username": username,
             "cards": {}
         }
     
     db["users"][str_user_id]["username"] = username
+    db["users"][str_user_id]["user_id"] = user_id
     
-    # حفظ كل بطاقة باسمها كمفتاح لضمان تحديث حالتها بدقة وعدم تكرارها
     for item in new_cards:
         card_name = item.get("card")
         status = item.get("status") # 'need' أو 'have'
@@ -49,9 +50,7 @@ def update_user_cards(user_id, username, new_cards):
 
 def find_matches():
     """
-    البحث عن مطابقات صحيحة للتبادل:
-    - العضو الأول لديه البطاقة بحالة 'have' (زائد/متوفر)
-    - العضو الثاني لديه نفس البطاقة بحالة 'need' (ناقص/أحتاجه)
+    البحث عن مطابقات صحيحة مع تمرير الـ ID الحقيقي واسم المستخدم للطرفين
     """
     db = load_db()
     users = db.get("users", {})
@@ -73,8 +72,10 @@ def find_matches():
                 if info.get("status") == "have" and card in u2_cards and u2_cards[card].get("status") == "need":
                     common_cards.append({
                         "card": card, 
-                        "giver": u1["username"], 
-                        "receiver": u2["username"]
+                        "giver_name": u1["username"],
+                        "giver_id": u1["user_id"],
+                        "receiver_name": u2["username"],
+                        "receiver_id": u2["user_id"]
                     })
             
             # 2. هل U2 يملك الكرت (زائد) و U1 يطلبه (ناقص)؟
@@ -82,14 +83,14 @@ def find_matches():
                 if info.get("status") == "have" and card in u1_cards and u1_cards[card].get("status") == "need":
                     common_cards.append({
                         "card": card, 
-                        "giver": u2["username"], 
-                        "receiver": u1["username"]
+                        "giver_name": u2["username"],
+                        "giver_id": u2["user_id"],
+                        "receiver_name": u1["username"],
+                        "receiver_id": u1["user_id"]
                     })
             
             if common_cards:
                 matches.append({
-                    "user1": u1["username"],
-                    "user2": u2["username"],
                     "cards": common_cards
                 })
                 
