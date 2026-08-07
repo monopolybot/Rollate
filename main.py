@@ -1,10 +1,10 @@
 # main.py
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 from config import BOT_TOKEN, ALLOWED_GROUPS, OWNER_ID
 from admin_handler import is_user_admin, can_stop_roulette
 from roulette_engine import game_manager
-from trading_handler import handle_album_photo
+from buttons_handler import start_card_selection, button_callback_handler
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # صمام الأمان: تجاهل التحديثات التي لا تحتوي على رسالة نصية
@@ -28,7 +28,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             game_manager.is_active = True
             game_manager.starter_id = u_id
-            await update.message.reply_text("🔥🔥 <b>يا شعب مونوبولي العظيم</b> 🔥🔥\n\nبدأت الروليت! اكتب <b>'انا'</b> للاشتراك", parse_mode='HTML')
+            await update.message.reply_text(
+    "👑 <b>مـمـلكـة مـونـوبـولـي تـنـاديـكـم</b> 👑\n"
+    "━━━━━━━━━━━━━━━━━━━\n"
+    "🔥🔥 <b>اشـتـعـلـت حرب الـرولـيـت!</b> 🔥🔥\n\n"
+    "⚡ <b>لـوائح الفوز تـنتظر الأبطال...</b>\n"
+    "اكتب الآن كلمة: <b>'انا'</b> لتسجيل اسمك في قائمة المشاركين!",
+    parse_mode='HTML'
+)
+
 
     # 2. تسجيل الأعضاء (انا)
     elif text == "انا" and game_manager.is_active:
@@ -38,6 +46,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "تم" and game_manager.is_active:
         if can_stop_roulette(u_id, game_manager.starter_id):
             await game_manager.run_elimination(update, context)
+
+    # 4. فتح قائمة الألبومات والبطاقات الملكية (البوماتي)
+    elif text in ["البوماتي", "البومات", "ابدأ"]:
+        await start_card_selection(update, context)
 
 if __name__ == '__main__':
     forced_token = BOT_TOKEN
@@ -53,9 +65,9 @@ if __name__ == '__main__':
         .build()
     )
     
-    # تسجيل الهاندلرز بالترتيب الصحيح
+    # تسجيل الهاندلرز بالترتيب الصحيح (النصوص، الأزرار، وحجب الصور القديمة المعطوبة)
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
-    app.add_handler(MessageHandler(filters.PHOTO, handle_album_photo))
+    app.add_handler(CallbackQueryHandler(button_callback_handler))
     
-    print("البوت يعمل الآن بنجاح بالتوكن المعتمد ومع حماية الاتصال...")
+    print("البوت يعمل الآن بنجاح بالتوكن المعتمد ومع نظام الأزرار الملكي وحماية الاتصال...")
     app.run_polling()
