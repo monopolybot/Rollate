@@ -1,5 +1,5 @@
 # buttons_handler.py
-# نظام الأزرار التفاعلية باللغة العربية للـ 21 مجموعة لتنسيق التبادل الملكي
+# نظام الأزرار الملكي المطور للـ 21 مجموعة مع خيارات (ناقص / زائد) لتنسيق التبادل
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -30,7 +30,7 @@ ALBUMS_DATA = {
     21: ["ويلي كويوتي", "القط المرعوب", "رود رانر", "تويتي الكناري", "سيلفستر", "هيكتور", "هدية مشبوهة", "إلمر فد", "باغز باني"]
 }
 
-# أمر بدء التسجيل (يعرض المجموعات الـ 21)
+# 1. عرض المجموعات الـ 21 الأساسية
 async def start_card_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query:
@@ -42,7 +42,7 @@ async def start_card_selection(update: Update, context: ContextTypes.DEFAULT_TYP
     keyboard = []
     row = []
     for album_id in ALBUMS_DATA.keys():
-        row.append(InlineKeyboardButton(f"📁 المجموعة {album_id}", callback_data=f"select_album_{album_id}"))
+        row.append(InlineKeyboardButton(f"📁 مجموعة {album_id}", callback_data=f"select_album_{album_id}"))
         if len(row) == 2:
             keyboard.append(row)
             row = []
@@ -52,20 +52,17 @@ async def start_card_selection(update: Update, context: ContextTypes.DEFAULT_TYP
     keyboard.append([InlineKeyboardButton("❌ إغلاق القائمة", callback_data="close_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    text = "👑 **نظام التبادل الملكي للبطاقات**\n\nالرجاء اختيار المجموعة المطلوبة لعرض بطاقاتها الحقيقية وتحديد ما تمتلكه:"
+    text = "👑 **نظام التبادل الملكي للبطاقات**\n\nاختر المجموعة المطلوبة لتحديد البطاقات (ناقصة أو زائدة):"
     
     if query:
-        # استخدام send_message أو تعديل آمن لتجنب أخطاء edit_text
-        await context.bot.send_message(
-            chat_id=message.chat_id,
-            text=text,
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
-        )
+        try:
+            await query.message.edit_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+        except Exception:
+            await context.bot.send_message(chat_id=message.chat_id, text=text, reply_markup=reply_markup, parse_mode="Markdown")
     else:
         await message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
 
-# التعامل مع الضغط على الأزرار
+# التعامل مع الأزرار والخيارات
 async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -74,6 +71,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     user_id = user.id
     username = f"@{user.username}" if user.username else user.first_name
 
+    # عند اختيار مجموعة معينة -> عرض بطاقاتها مع خيارات (أحتاجه / متوفر لدي)
     if data.startswith("select_album_"):
         album_id = int(data.replace("select_album_", ""))
         cards = ALBUMS_DATA.get(album_id)
@@ -83,32 +81,44 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 
         keyboard = []
         for card in cards:
-            keyboard.append([InlineKeyboardButton(f"🎴 {card}", callback_data=f"get_card_{album_id}_{card}")])
+            # صف لكل بطاقة يحتوي على اسم البطاقة وزرين (أحتاجه / متوفر لدي)
+            keyboard.append([InlineKeyboardButton(f"🎴 {card}", callback_data="noop")]) # عنوان البطاقة غير قابل للضغط
+            keyboard.append([
+                InlineKeyboardButton("❌ أحتاجه (ناقص)", callback_data=f"status_need_{album_id}_{card}"),
+                InlineKeyboardButton("✅ متوفر (زائد)", callback_data=f"status_have_{album_id}_{card}")
+            ])
         
         keyboard.append([InlineKeyboardButton("🔙 العودة للمجموعات", callback_data="back_to_albums")])
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         try:
             await query.message.edit_text(
-                f"📌 **مجموعة رقم {album_id}**\n\nاضغط على البطاقة لتسجيلها ضمن بطاقاتك المتوفرة:",
+                f"📌 **مجموعة رقم {album_id}**\n\nحدد حالة كل بطاقة (ناقصة للبحث أو زائدة للتبادل):",
                 reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
         except Exception:
             await context.bot.send_message(
                 chat_id=query.message.chat_id,
-                text=f"📌 **مجموعة رقم {album_id}**\n\nاضغط على البطاقة لتسجيلها ضمن بطاقاتك المتوفرة:",
+                text=f"📌 **مجموعة رقم {album_id}**\n\nحدد حالة كل بطاقة (ناقصة للبحث أو زائدة للتبادل):",
                 reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
 
-    elif data.startswith("get_card_"):
-        parts = data.split("_", 2)
-        card_name = parts[2] if len(parts) > 2 else "بطاقة"
+    # عند اختيار حالة البطاقة (ناقص أو زائد)
+    elif data.startswith("status_need_") or data.startswith("status_have_"):
+        parts = data.split("_", 3)
+        status_type = parts[1] # need أو have
+        album_id = parts[2]
+        card_name = parts[3] if len(parts) > 3 else "بطاقة"
         
-        update_user_cards(user_id, username, [card_name])
+        status_text = "أحتاجه (ناقص)" if status_type == "need" else "متوفر لدي (زائد)"
+        
+        # حفظ الحالة في قاعدة البيانات
+        update_user_cards(user_id, username, [{"card": card_name, "status": status_type, "album": album_id}])
+        
+        # البحث عن توافقات فورية
         matches = find_matches()
-
         for match in matches:
             if username in [match.get("user1"), match.get("user2")]:
                 other_user = match["user2"] if match["user1"] == username else match["user1"]
@@ -123,12 +133,15 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
                         f"✨ تم رصد توافق بين العضو: {username}\n"
                         f"✨ والطرف الآخر: {other_user}\n\n"
                         f"📌 **البطاقات المتوافقة:**\n`{matched_items}`\n\n"
-                        f"الرجاء التنسيق مع الادارة لإتمام التبادل بنجاح!"
+                        f"الرجاء التنسيق مع الإدارة لإتمام التبادل بنجاح!"
                     ),
                     parse_mode="Markdown"
                 )
 
-        await query.answer(f"✅ تم تسجيل بطاقة ({card_name}) بنجاح!", show_alert=True)
+        await query.answer(f"✅ تم تسجيل ({card_name}) كـ [{status_text}] بنجاح!", show_alert=True)
+
+    elif data == "noop":
+        await query.answer("هذا عنوان البطاقة، استخدم الأزرار بالأسفل لتحديد حالتها 👇", show_alert=False)
 
     elif data == "back_to_albums":
         try:
