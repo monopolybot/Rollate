@@ -2,3 +2,4 @@ python-telegram-bot
 tinydb
 pytesseract
 Pillow
+google-generativeai
