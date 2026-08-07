@@ -69,7 +69,7 @@ if __name__ == '__main__':
     # تسجيل الهاندلرز بالترتيب الصحيح (النصوص، الأزرار، وحجب الصور القديمة المعطوبة)
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
     app.add_handler(CallbackQueryHandler(button_callback_handler))
-    setup_vision_handler(client)
+    setup_vision_handler(app)
     
     print("البوت يعمل الآن بنجاح بالتوكن المعتمد ومع نظام الأزرار الملكي وحماية الاتصال...")
     app.run_polling()
