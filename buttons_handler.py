@@ -118,25 +118,32 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         update_user_cards(user_id, username, [{"card": card_name, "status": status_type, "album": album_id}])
         
         # البحث عن توافقات فورية
+                # البحث عن توافقات فورية وإرسال المنشن الحقيقي بالـ ID
         matches = find_matches()
         for match in matches:
-            if username in [match.get("user1"), match.get("user2")]:
-                other_user = match["user2"] if match["user1"] == username else match["user1"]
-                matched_raw = match.get("cards", [])
-                matched_names = [str(m.get("card") if isinstance(m, dict) else m) for m in matched_raw]
-                matched_items = ", ".join(matched_names)
+            for item in match.get("cards", []):
+                giver_name = item["giver_name"]
+                giver_id = item["giver_id"]
+                receiver_name = item["receiver_name"]
+                receiver_id = item["receiver_id"]
+                card_title = item["card"]
                 
-                await context.bot.send_message(
-                    chat_id=query.message.chat_id,
-                    text=(
-                        f"🤝 **تنسيق تلقائي للتبادل الملكي!**\n\n"
-                        f"✨ تم رصد توافق بين العضو: {username}\n"
-                        f"✨ والطرف الآخر: {other_user}\n\n"
-                        f"📌 **البطاقات المتوافقة:**\n`{matched_items}`\n\n"
-                        f"الرجاء التنسيق مع الإدارة لإتمام التبادل بنجاح!"
-                    ),
-                    parse_mode="Markdown"
-                )
+                # التأكد أن العضو الحالي هو أحد طرفي التبادل لتجنب تكرار الرسائل غير الضرورية
+                if user_id in [giver_id, receiver_id]:
+                    await context.bot.send_message(
+                        chat_id=query.message.chat_id,
+                        text=(
+                            f"🤝 <b>تـنـسـيـق تـلـقـائي لـلـتـبـادل الـمـلـكـي!</b> 🤝\n"
+                            f"━━━━━━━━━━━━━━━━━━━\n"
+                            f"🎁 <b>المتبرع (يملك الكرت زائد):</b> <a href='tg://user?id={giver_id}'><b>{giver_name}</b></a>\n"
+                            f"🎯 <b>المستلم (يحتاج الكرت ناقص):</b> <a href='tg://user?id={receiver_id}'><b>{receiver_name}</b></a>\n\n"
+                            f"🎴 <b>البطاقة المتوافقة:</b> <code>{card_title}</code>\n"
+                            f"━━━━━━━━━━━━━━━━━━━\n"
+                            f"⚡ <i>الرجاء التنسيق بينكما لإتمام التبادل بنجاح!</i>"
+                        ),
+                        parse_mode="HTML"
+                    )
+
 
         await query.answer(f"✅ تم تسجيل ({card_name}) كـ [{status_text}] بنجاح!", show_alert=True)
 
