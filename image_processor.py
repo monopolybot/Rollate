@@ -1,24 +1,22 @@
 # image_processor.py
-# نظام معالجة الصور واستخراج البطاقات تلقائياً باستخدام OCR مع تثبيت مسار النماذج
+# نظام معالجة الصور واستخراج البطاقات باستخدام pytesseract (خفيف جداً وبدون نماذج ضخمة)
 
 import os
-import easyocr
+from PIL import Image
+import pytesseract
 from cards_engine import match_card_text
-
-# تحديد مجلد ثابت لتخزين نماذج الذكاء الاصطناعي لمنع إعادة تنزيلها مع كل ريستارت
-MODEL_DIR = os.path.join(os.path.expanduser("~"), ".EasyOCR")
-
-# تهيئة القارئ مع توجيهه للمسار الثابت للغة العربية والانجليزية
-reader = easyocr.Reader(['ar', 'en'], model_storage_directory=MODEL_DIR, download_enabled=True)
 
 async def process_user_album_image(image_path):
     try:
-        # قراءة النص من الصورة
-        results = reader.readtext(image_path, detail=0)
-        full_extracted_text = " ".join(results)
+        # فتح الصورة باستخدام Pillow
+        img = Image.open(image_path)
+        
+        # استخراج النصوص باللغتين العربية والإنجليزية عبر Tesseract
+        # (ملاحظة: ara+eng تدعم النص العربي والإنكليزي معاً)
+        extracted_text = pytesseract.image_to_string(img, lang='ara+eng')
         
         # مطابقة النصوص مع البطاقات الـ 21
-        matched_cards = match_card_text(full_extracted_text)
+        matched_cards = match_card_text(extracted_text)
         
         return {
             "status": "success",
@@ -30,6 +28,6 @@ async def process_user_album_image(image_path):
             "message": str(e)
         }
     finally:
-        # تنظيف الصورة المؤقتها بعد الانتهاء
+        # تنظيف الصورة المؤقتة بعد الانتهاء
         if os.path.exists(image_path):
             os.remove(image_path)
