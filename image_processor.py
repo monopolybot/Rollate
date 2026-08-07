@@ -1,27 +1,23 @@
 # image_processor.py
-# نظام معالجة الصور واستخراج البطاقات تلقائياً باستخدام OCR
+# نظام معالجة الصور واستخراج البطاقات تلقائياً باستخدام OCR مع تثبيت مسار النماذج
 
 import os
 import easyocr
 from cards_engine import match_card_text
 
-# تهيئة القارئ ليدعم اللغتين العربية والإنجليزية
-# (سيتم تحميل النموذج تلقائياً عند أول تشغيل)
-reader = easyocr.Reader(['ar', 'en'])
+# تحديد مجلد ثابت لتخزين نماذج الذكاء الاصطناعي لمنع إعادة تنزيلها مع كل ريستارت
+MODEL_DIR = os.path.join(os.path.expanduser("~"), ".EasyOCR")
+
+# تهيئة القارئ مع توجيهه للمسار الثابت للغة العربية والانجليزية
+reader = easyocr.Reader(['ar', 'en'], model_storage_directory=MODEL_DIR, download_enabled=True)
 
 async def process_user_album_image(image_path):
-    """
-    استقبال مسار الصورة، قراءة النصوص فيها، 
-    ومطابقتها مع قائمة الـ 21 مجموعة لتحديد البطاقات بدقة.
-    """
     try:
-        # قراءة النصوص من الصورة
+        # قراءة النص من الصورة
         results = reader.readtext(image_path, detail=0)
-        
-        # دمج النصوص المستخرجة في نص واحد للبحث
         full_extracted_text = " ".join(results)
         
-        # مطابقة النصوص مع البطاقات عبر محرك الألبومات
+        # مطابقة النصوص مع البطاقات الـ 21
         matched_cards = match_card_text(full_extracted_text)
         
         return {
@@ -34,6 +30,6 @@ async def process_user_album_image(image_path):
             "message": str(e)
         }
     finally:
-        # تنظيف وحذف الملف المؤقت بعد الانتهاء للحفاظ على مساحة السيرفر
+        # تنظيف الصورة المؤقتها بعد الانتهاء
         if os.path.exists(image_path):
             os.remove(image_path)
