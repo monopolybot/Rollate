@@ -1,15 +1,14 @@
 import os
 import logging
-import google.generativeai as genai
+from google import genai
 from telegram import Update
 from telegram.ext import MessageHandler, filters, ContextTypes
 from config import ALLOWED_GROUPS
 
 logger = logging.getLogger(__name__)
 
-# إعداد مفتاح Gemini للرؤية البصرية الذكية
-genai.configure(api_key="AIzaSyAMpzwY1Gt4-NTtTf5r9n8MPc1vk37ZMrE")
-model = genai.GenerativeModel('gemini-1.5-flash')
+# إعداد عميل Gemini الحديث للرؤية البصرية الذكية
+client_ai = genai.Client(api_key="AIzaSyAMpzwY1Gt4-NTtTf5r9n8MPc1vk37ZMrE")
 
 # قاعدة بيانات مؤقتة في الذاكرة لتخزين بطاقات الأعضاء لكل جروب
 group_cards_database = {}
@@ -42,7 +41,7 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         try:
             with open(path, "rb") as image_file:
-                img_data = image_file.read()
+                img_bytes = image_file.read()
             
             prompt = (
                 "قم بتحليل لقطة شاشة لعبة مونوبولي هذه بدقة بالغة. "
@@ -52,10 +51,19 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "لا تقم بإضافة تفاصيل طويلة، فقط أطراف الأسماء أو أسماء البطاقات واضحة."
             )
             
-            response = model.generate_content([
-                prompt,
-                {"mime_type": "image/jpeg", "data": img_data}
-            ])
+            # الاستدعاء بالطريقة الحديثة والمستقرة للموديل الجديد
+            response = client_ai.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[
+                    prompt,
+                    {
+                        'inline_data': {
+                            'mime_type': 'image/jpeg',
+                            'data': img_bytes
+                        }
+                    }
+                ]
+            )
             
             ai_text = response.text
 
