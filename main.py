@@ -5,6 +5,7 @@ from config import BOT_TOKEN, ALLOWED_GROUPS, OWNER_ID
 from admin_handler import is_user_admin, can_stop_roulette
 from roulette_engine import game_manager
 from buttons_handler import start_card_selection, button_callback_handler
+from vision_engine import setup_vision_handler
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # صمام الأمان: تجاهل التحديثات التي لا تحتوي على رسالة نصية
@@ -68,6 +69,7 @@ if __name__ == '__main__':
     # تسجيل الهاندلرز بالترتيب الصحيح (النصوص، الأزرار، وحجب الصور القديمة المعطوبة)
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
     app.add_handler(CallbackQueryHandler(button_callback_handler))
+    setup_vision_handler(client)
     
     print("البوت يعمل الآن بنجاح بالتوكن المعتمد ومع نظام الأزرار الملكي وحماية الاتصال...")
     app.run_polling()
