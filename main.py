@@ -1,3 +1,4 @@
+# main.py
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from config import BOT_TOKEN, ALLOWED_GROUPS, OWNER_ID
@@ -11,7 +12,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     chat_id = update.effective_chat.id
-    if chat_id not in ALLOWED_GROUPS: return
+    if chat_id not in ALLOWED_GROUPS: 
+        return
 
     text = update.message.text.strip()
     u_id = update.effective_user.id
@@ -38,12 +40,22 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await game_manager.run_elimination(update, context)
 
 if __name__ == '__main__':
-    # إجبار التطبيق على استخدام التوكن الصريح من config.py حصرياً وتجاهل أي متغيرات بيئة قديمة
     forced_token = BOT_TOKEN
     
-    app = ApplicationBuilder().token(forced_token).build()
+    # بناء التطبيق مع تحديد مهلات اتصال واسعة لمنع أخطاء الـ Timeout نهائياً
+    app = (
+        ApplicationBuilder()
+        .token(forced_token)
+        .read_timeout(30)
+        .write_timeout(30)
+        .connect_timeout(30)
+        .pool_timeout(30)
+        .build()
+    )
+    
+    # تسجيل الهاندلرز بالترتيب الصحيح
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
     app.add_handler(MessageHandler(filters.PHOTO, handle_album_photo))
     
-    print("البوت يعمل الآن بنجاح بالتوكن المعتمد حصرياً من الملف...")
+    print("البوت يعمل الآن بنجاح بالتوكن المعتمد ومع حماية الاتصال...")
     app.run_polling()
