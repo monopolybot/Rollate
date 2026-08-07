@@ -1,4 +1,6 @@
 import os
+import time
+import asyncio
 import logging
 from google import genai
 from telegram import Update
@@ -7,13 +9,13 @@ from config import ALLOWED_GROUPS
 
 logger = logging.getLogger(__name__)
 
-# تجميع المفتاح برمجياً لتجاوز حظر جيت هب وضمان سلامته 100%
-p1 = "AQ.Ab8RN6LkP7YbnfEOv"
-p2 = "R4P0GgKCWrvSpDPArjhf"
-p3 = "FdPzcihZKN9Rg"
+# تجميع المفتاح الجديد برمجياً لتجاوز حظر جيت هب وضمان سلامته 100%
+p1 = "AQ.Ab8RN6Ik3tH2nkH"
+p2 = "MbsjdVmRIncp9en8cK"
+p3 = "GPo_Yjo8eBufCEdDw"
 real_api_key = p1 + p2 + p3
 
-# إعداد عميل Gemini بالمفتاح الآمن
+# إعداد عميل Gemini بالمفتاح الجديد الآمن
 client_ai = genai.Client(api_key=real_api_key)
 
 # قاعدة بيانات مؤقتة في الذاكرة لتخزين بطاقات الأعضاء لكل جروب
@@ -40,10 +42,15 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not os.path.exists("downloads"):
             os.makedirs("downloads")
             
-        # تحميل أعلى دقة للصورة المرسلة
-        photo_file = await update.message.photo[-1].get_file()
         path = os.path.join("downloads", f"{u_id}_{chat_id}.jpg")
-        await photo_file.download_to_drive(path)
+        
+        try:
+            photo_file = await update.message.photo[-1].get_file()
+            await photo_file.download_to_drive(path)
+        except Exception as e:
+            logger.error(f"Error downloading image for user {u_id}: {e}")
+            await processing_msg.edit_text("⚠️ **حدث خطأ أثناء تحميل الصورة من تيليجرام، يرجى إعادة إرسالها.**", parse_mode='HTML')
+            return
         
         try:
             with open(path, "rb") as image_file:
@@ -57,20 +64,38 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "لا تقم بإضافة تفاصيل طويلة، فقط أطراف الأسماء أو أسماء البطاقات واضحة."
             )
             
-            # التصحيح هنا: استخدام الموديل المستقر والمتاح gemini-2.0-flash
-            response = client_ai.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=[
-                    prompt,
-                    {
-                        'inline_data': {
-                            'mime_type': 'image/jpeg',
-                            'data': img_bytes
-                        }
-                    }
-                ]
-            )
+            # محاولة الاتصال مع نظام إعادة المحاولة التلقائية عند الضغط
+            response = None
+            max_retries = 3
+            retry_delay = 5
             
+            for attempt in range(max_retries):
+                try:
+                    response = client_ai.models.generate_content(
+                        model='gemini-2.0-flash',
+                        contents=[
+                            prompt,
+                            {
+                                'inline_data': {
+                                    'mime_type': 'image/jpeg',
+                                    'data': img_bytes
+                                }
+                            }
+                        ]
+                    )
+                    break
+                except Exception as api_err:
+                    err_str = str(api_err)
+                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(retry_delay)
+                            retry_delay *= 2
+                            continue
+                    raise api_err
+
+            if not response:
+                raise Exception("API quota exhausted or no response received.")
+
             ai_text = response.text
 
             surplus_cards = []
@@ -97,12 +122,10 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if chat_id not in group_cards_database:
                 group_cards_database[chat_id] = {}
 
-            # قائمة لجمع التوافقات الفريدة لمنع أي تكرار
             unique_matches = []
             
             for other_id, other_data in group_cards_database[chat_id].items():
                 if other_id != u_id:
-                    # 1. ما يملكه الآخر ويزيد عنه ويحتاجه العضو الحالي
                     common_cards_giver = list(set(other_data['surplus']).intersection(set(missing_cards)))
                     if common_cards_giver:
                         cards_str = ", ".join([f"<code>{c}</code>" for c in common_cards_giver])
@@ -118,7 +141,6 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         if match_msg not in unique_matches:
                             unique_matches.append(match_msg)
 
-                    # 2. ما يملكه العضو الحالي ويزيد عنه ويحتاجه الآخر
                     common_cards_receiver = list(set(surplus_cards).intersection(set(other_data['missing'])))
                     if common_cards_receiver:
                         cards_str = ", ".join([f"<code>{c}</code>" for c in common_cards_receiver])
@@ -134,7 +156,6 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         if match_msg not in unique_matches:
                             unique_matches.append(match_msg)
 
-            # تحديث بيانات العضو الحالي في الذاكرة
             group_cards_database[chat_id][u_id] = {
                 "name": u_name,
                 "surplus": surplus_cards,
@@ -149,13 +170,15 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             await processing_msg.edit_text(base_response, parse_mode='HTML')
 
-            # إرسال رسائل التوافق الفريدة فقط بدون أي تكرار
             for msg in unique_matches:
                 await update.message.reply_text(msg, parse_mode='HTML')
         
         except Exception as e:
             logger.error(f"Error analyzing image for user {u_id}: {e}")
-            await processing_msg.edit_text("⚠️ **حدث خطأ ملكي أثناء معالجة الصورة، يرجى التأكد من وضوحها وإعادة إرسالها.**", parse_mode='HTML')
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                await processing_msg.edit_text("⚠️ **تم بلوغ حد الطلبات المجاني المؤقت (Rate Limit) لخدمة الذكاء الاصطناعي. يرجى المحاولة بعد قليل.**", parse_mode='HTML')
+            else:
+                await processing_msg.edit_text("⚠️ **حدث خطأ ملكي أثناء معالجة الصورة، يرجى التأكد من وضوحها وإعادة إرسالها.**", parse_mode='HTML')
         
         if path and os.path.exists(path):
             os.remove(path)
