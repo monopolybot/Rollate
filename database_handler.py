@@ -21,7 +21,7 @@ def save_db(data):
 
 def update_user_cards(user_id, username, new_cards):
     """
-    تحديث بطاقات العضو (يمكن تعديل المنطق لاحقاً لتمييز الزائد والناقص بدقة)
+    تحديث بطاقات العضو وحفظ حالتها (ناقص أو زائد) داخل قاموس مرتب لكل بطاقة
     """
     db = load_db()
     str_user_id = str(user_id)
@@ -29,34 +29,68 @@ def update_user_cards(user_id, username, new_cards):
     if str_user_id not in db["users"]:
         db["users"][str_user_id] = {
             "username": username,
-            "cards": []
+            "cards": {}
         }
     
     db["users"][str_user_id]["username"] = username
-    db["users"][str_user_id]["cards"] = new_cards
+    
+    # حفظ كل بطاقة باسمها كمفتاح لضمان تحديث حالتها بدقة وعدم تكرارها
+    for item in new_cards:
+        card_name = item.get("card")
+        status = item.get("status") # 'need' أو 'have'
+        album = item.get("album")
+        if card_name and status:
+            db["users"][str_user_id]["cards"][card_name] = {
+                "status": status,
+                "album": album
+            }
+            
     save_db(db)
 
 def find_matches():
     """
-    الابحث عن مطابقات بين الأعضاء (من يحتاج ما يملكه غيره)
+    البحث عن مطابقات صحيحة للتبادل:
+    - العضو الأول لديه البطاقة بحالة 'have' (زائد/متوفر)
+    - العضو الثاني لديه نفس البطاقة بحالة 'need' (ناقص/أحتاجه)
     """
     db = load_db()
     users = db.get("users", {})
     matches = []
     
-    # خوارزمية مبدئية للمطابقة بين الأعضاء المسجلين
     user_ids = list(users.keys())
     for i in range(len(user_ids)):
         for j in range(i + 1, len(user_ids)):
             u1 = users[user_ids[i]]
             u2 = users[user_ids[j]]
             
-            # البحث عن تقاطع في البطاقات بين العضوين
-            common_cards = [c for c in u1["cards"] if c in u2["cards"]]
+            u1_cards = u1.get("cards", {})
+            u2_cards = u2.get("cards", {})
+            
+            common_cards = []
+            
+            # 1. هل U1 يملك الكرت (زائد) و U2 يطلبه (ناقص)؟
+            for card, info in u1_cards.items():
+                if info.get("status") == "have" and card in u2_cards and u2_cards[card].get("status") == "need":
+                    common_cards.append({
+                        "card": card, 
+                        "giver": u1["username"], 
+                        "receiver": u2["username"]
+                    })
+            
+            # 2. هل U2 يملك الكرت (زائد) و U1 يطلبه (ناقص)؟
+            for card, info in u2_cards.items():
+                if info.get("status") == "have" and card in u1_cards and u1_cards[card].get("status") == "need":
+                    common_cards.append({
+                        "card": card, 
+                        "giver": u2["username"], 
+                        "receiver": u1["username"]
+                    })
+            
             if common_cards:
                 matches.append({
                     "user1": u1["username"],
                     "user2": u2["username"],
                     "cards": common_cards
                 })
+                
     return matches
