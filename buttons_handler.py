@@ -40,7 +40,6 @@ async def start_card_selection(update: Update, context: ContextTypes.DEFAULT_TYP
         message = update.message
 
     keyboard = []
-    # ترتيب الألبومات في أزرار (كل ألبومين في صف لتسهيل التصفح)
     row = []
     for album_id in ALBUMS_DATA.keys():
         row.append(InlineKeyboardButton(f"📁 المجموعة {album_id}", callback_data=f"select_album_{album_id}"))
@@ -56,7 +55,13 @@ async def start_card_selection(update: Update, context: ContextTypes.DEFAULT_TYP
     text = "👑 **نظام التبادل الملكي للبطاقات**\n\nالرجاء اختيار المجموعة المطلوبة لعرض بطاقاتها الحقيقية وتحديد ما تمتلكه:"
     
     if query:
-        await message.edit_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+        # استخدام send_message أو تعديل آمن لتجنب أخطاء edit_text
+        await context.bot.send_message(
+            chat_id=message.chat_id,
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
     else:
         await message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
 
@@ -74,7 +79,6 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         cards = ALBUMS_DATA.get(album_id)
         
         if not cards:
-            await query.edit_text("⚠️ المجموعة غير موجودة.")
             return
 
         keyboard = []
@@ -84,20 +88,25 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         keyboard.append([InlineKeyboardButton("🔙 العودة للمجموعات", callback_data="back_to_albums")])
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await query.edit_text(
-            f"📌 **مجموعة رقم {album_id}**\n\nاضغط على البطاقة لتسجيلها ضمن بطاقاتك المتوفرة:",
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
-        )
+        try:
+            await query.message.edit_text(
+                f"📌 **مجموعة رقم {album_id}**\n\nاضغط على البطاقة لتسجيلها ضمن بطاقاتك المتوفرة:",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        except Exception:
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text=f"📌 **مجموعة رقم {album_id}**\n\nاضغط على البطاقة لتسجيلها ضمن بطاقاتك المتوفرة:",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
 
     elif data.startswith("get_card_"):
         parts = data.split("_", 2)
         card_name = parts[2] if len(parts) > 2 else "بطاقة"
         
-        # حفظ البطاقة الحقيقية في قاعدة البيانات
         update_user_cards(user_id, username, [card_name])
-        
-        # البحث عن تطابقات فورية
         matches = find_matches()
 
         for match in matches:
@@ -122,7 +131,14 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         await query.answer(f"✅ تم تسجيل بطاقة ({card_name}) بنجاح!", show_alert=True)
 
     elif data == "back_to_albums":
+        try:
+            await query.message.delete()
+        except Exception:
+            pass
         await start_card_selection(update, context)
 
     elif data == "close_menu":
-        await query.message.delete()
+        try:
+            await query.message.delete()
+        except Exception:
+            pass
