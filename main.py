@@ -68,13 +68,21 @@ if __name__ == '__main__':
         .build()
     )
     
-    # تسجيل الهاندلرز بالترتيب الصحيح (النصوص، الأزرار، وحجب الصور القديمة المعطوبة)
+    # تسجيل الهاندلرز بالترتيب الصحيح
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
     app.add_handler(CallbackQueryHandler(button_callback_handler))
     #setup_vision_handler(app)
     register_extractor_handler(app)
     register_auto_responses(app)
     
+    # --- التعديل السحري والآمن لتشغيل الأذكار والصلاة فوراً مع إقلاع البوت ---
+    async def post_init(application):
+        import asyncio
+        from auto_responses import schedule_loop
+        asyncio.create_task(schedule_loop(application))
+    
+    app.post_init = post_init
+    # ---------------------------------------------------------------------
     
     print("البوت يعمل الآن بنجاح بالتوكن المعتمد ومع نظام الأزرار الملكي وحماية الاتصال...")
     app.run_polling()
