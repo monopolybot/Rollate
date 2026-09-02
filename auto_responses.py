@@ -191,5 +191,5 @@ async def schedule_loop(application):
 
 def register_auto_responses(application):
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_auto_responses))
-    # تشغيل حلقة الجدولة بأمان عبر JobQueue بعد الإقلاع لتجنب خطأ الـ Event Loop
-    application.job_queue.run_once(lambda context: asyncio.create_task(schedule_loop(application)), when=1)
+
+
