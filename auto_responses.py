@@ -7,7 +7,14 @@ from zoneinfo import ZoneInfo
 from telegram import Update
 from telegram.ext import ContextTypes, MessageHandler, filters
 
-TARGET_GROUP_ID = -1002695848824
+# قائمة المجموعات المسموحة للنشر التلقائي
+ALLOWED_GROUPS = [
+    -1004432647304,
+    -1002052564369,
+    -1004477090207,
+    -1004400057155
+]
+
 AMMAN_TZ = ZoneInfo('Asia/Amman')
 
 rotation_indexes = {
@@ -117,45 +124,55 @@ async def schedule_loop(application):
                 sent_today = {k: False for k in sent_today}
                 sent_prayers = {}
 
-            # أذكار الصباح (بخاط عريض ومنسقة بالكامل)
+            # دوال إرسال الرسالة لجميع المجموعات المسموحة دفعة واحدة
+            async def broadcast(message_text):
+                for chat_id in ALLOWED_GROUPS:
+                    try:
+                        await application.bot.send_message(chat_id=chat_id, text=message_text, parse_mode='HTML')
+                    except Exception as e:
+                        print(f"فشل الإرسال للمجموعة {chat_id}: {e}")
+
+            # أذكار الصباح (6:00 صباحاً)
             if current_time_str == "06:00" and not sent_today["morning_6"]:
                 msg = (
                     "<b>👑 يا شعب مونوبولي العظيم 👑</b>\n\n"
                     "<b>☀️ حان الان موعد أذكار الصباح ☀️</b>\n\n"
                     "<b>لا تنسونا من صالح دعائكم</b>"
                 )
-                await application.bot.send_message(chat_id=TARGET_GROUP_ID, text=msg, parse_mode='HTML')
+                await broadcast(msg)
                 sent_today["morning_6"] = True
 
+            # أذكار الصباح (10:00 صباحاً)
             elif current_time_str == "10:00" and not sent_today["morning_10"]:
                 msg = (
                     "<b>👑 يا شعب مونوبولي العظيم 👑</b>\n\n"
                     "<b>☀️ حان الان موعد أذكار الصباح ☀️</b>\n\n"
                     "<b>لا تنسونا من صالح دعائكم</b>"
                 )
-                await application.bot.send_message(chat_id=TARGET_GROUP_ID, text=msg, parse_mode='HTML')
+                await broadcast(msg)
                 sent_today["morning_10"] = True
 
-            # أذكار المساء (بخاط عريض ومنسقة بالكامل)
+            # أذكار المساء (8:00 مساءً)
             elif current_time_str == "20:00" and not sent_today["evening_20"]:
                 msg = (
                     "<b>👑 يا شعب مونوبولي العظيم 👑</b>\n\n"
                     "<b>🌙 حان الان موعد أذكار المساء 🌙</b>\n\n"
                     "<b>لا تنسونا من صالح دعائكم</b>"
                 )
-                await application.bot.send_message(chat_id=TARGET_GROUP_ID, text=msg, parse_mode='HTML')
+                await broadcast(msg)
                 sent_today["evening_20"] = True
 
+            # أذكار المساء (11:00 ليلاً)
             elif current_time_str == "23:00" and not sent_today["evening_23"]:
                 msg = (
                     "<b>👑 يا شعب مونوبولي العظيم 👑</b>\n\n"
                     "<b>🌙 حان الان موعد أذكار المساء 🌙</b>\n\n"
                     "<b>لا تنسونا من صالح دعائكم</b>"
                 )
-                await application.bot.send_message(chat_id=TARGET_GROUP_ID, text=msg, parse_mode='HTML')
+                await broadcast(msg)
                 sent_today["evening_23"] = True
 
-            # مواعيد الصلاة (بخاط عريض ومنسقة بالكامل)
+            # مواعيد الصلاة الدقيقة 100%
             timings = fetch_amman_prayer_times()
             for p_name, p_time in timings.items():
                 if current_time_str == p_time and not sent_prayers.get(p_name, False):
@@ -164,7 +181,7 @@ async def schedule_loop(application):
                         "<b>حسب التوقيت المحلي للمملكة الأردنية الهاشمية</b>\n\n"
                         f"<b>🕌 حان الان موعد صلاة {p_name} 🕌</b>"
                     )
-                    await application.bot.send_message(chat_id=TARGET_GROUP_ID, text=msg, parse_mode='HTML')
+                    await broadcast(msg)
                     sent_prayers[p_name] = True
 
         except Exception as e:
