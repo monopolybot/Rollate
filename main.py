@@ -7,6 +7,7 @@ from roulette_engine import game_manager
 from buttons_handler import start_card_selection, button_callback_handler
 #from vision_engine import setup_vision_handler
 from file_id_extractor import register_extractor_handler
+from auto_responses import register_auto_responses
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # صمام الأمان: تجاهل التحديثات التي لا تحتوي على رسالة نصية
@@ -72,7 +73,8 @@ if __name__ == '__main__':
     app.add_handler(CallbackQueryHandler(button_callback_handler))
     #setup_vision_handler(app)
     register_extractor_handler(app)
-
+    register_auto_responses(app)
+    
     
     print("البوت يعمل الآن بنجاح بالتوكن المعتمد ومع نظام الأزرار الملكي وحماية الاتصال...")
     app.run_polling()
