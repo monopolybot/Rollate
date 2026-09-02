@@ -75,14 +75,16 @@ if __name__ == '__main__':
     register_extractor_handler(app)
     register_auto_responses(app)
     
-    # --- التعديل السحري والآمن لتشغيل الأذكار والصلاة فوراً مع إقلاع البوت ---
+    # --- التعديل الآمن لربط المهمة بدورة حياة التطبيق بشكل دائم ---
     async def post_init(application):
         import asyncio
         from auto_responses import schedule_loop
-        asyncio.create_task(schedule_loop(application))
+        # حفظ مرجع المهمة داخل bot_data لضمان عدم تدميرها أثناء تشغيل البوت
+        application.bot_data['schedule_task'] = asyncio.create_task(schedule_loop(application))
     
     app.post_init = post_init
-    # ---------------------------------------------------------------------
-    
+    # -------------------------------------------------------------
+
     print("البوت يعمل الآن بنجاح بالتوكن المعتمد ومع نظام الأزرار الملكي وحماية الاتصال...")
     app.run_polling()
+    
