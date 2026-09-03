@@ -7,7 +7,7 @@ from roulette_engine import game_manager
 from buttons_handler import start_card_selection, button_callback_handler
 #from vision_engine import setup_vision_handler
 from file_id_extractor import register_extractor_handler
-from auto_responses import register_auto_responses
+from auto_responses import register_auto_responses, handle_auto_responses
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # صمام الأمان: تجاهل التحديثات التي لا تحتوي على رسالة نصية
@@ -32,27 +32,33 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             game_manager.is_active = True
             game_manager.starter_id = u_id
             await update.message.reply_text(
-    "👑 <b>مـمـلكـة مـونـوبـولـي تـنـاديـكـم</b> 👑\n"
-    "━━━━━━━━━━━━━━━━━━━\n"
-    "🔥🔥 <b>اشـتـعـلـت حرب الـرولـيـت!</b> 🔥🔥\n\n"
-    "⚡ <b>لـوائح الفوز تـنتظر الأبطال...</b>\n"
-    "اكتب الآن كلمة: <b>'انا'</b> لتسجيل اسمك في قائمة المشاركين!",
-    parse_mode='HTML'
-)
-
+                "👑 <b>مـمـلكـة مـونـوبـولـي تـنـاديـكـم</b> 👑\n"
+                "━━━━━━━━━━━━━━━━━━━\n"
+                "🔥🔥 <b>اشـتـعـلـت حرب الـرولـيـت!</b> 🔥🔥\n\n"
+                "⚡ <b>لـوائح الفوز تـنتظر الأبطال...</b>\n"
+                "اكتب الآن كلمة: <b>'انا'</b> لتسجيل اسمك في قائمة المشاركين!",
+                parse_mode='HTML'
+            )
+        return
 
     # 2. تسجيل الأعضاء (انا)
     elif text == "انا" and game_manager.is_active:
         game_manager.add_player(u_id, u_name)
+        return
 
     # 3. أمر النهاية (تم)
     elif text == "تم" and game_manager.is_active:
         if can_stop_roulette(u_id, game_manager.starter_id):
             await game_manager.run_elimination(update, context)
+        return
 
     # 4. فتح قائمة الألبومات والبطاقات الملكية (البوماتي)
     elif text in ["البوماتي", "البومات", "ابدأ"]:
         await start_card_selection(update, context)
+        return
+
+    # 5. تمرير الرسالة للردود التلقائية (صباح الخير، السلام عليكم، إلخ) إذا لم تكن أمراً خاصاً بالأعلى
+    await handle_auto_responses(update, context)
 
 if __name__ == '__main__':
     forced_token = BOT_TOKEN
@@ -87,4 +93,3 @@ if __name__ == '__main__':
 
     print("البوت يعمل الآن بنجاح بالتوكن المعتمد ومع نظام الأزرار الملكي وحماية الاتصال...")
     app.run_polling()
-    
