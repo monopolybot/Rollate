@@ -68,16 +68,18 @@ async def handle_auto_responses(update: Update, context: ContextTypes.DEFAULT_TY
         await update.message.reply_video(video=videos[idx])
         rotation_indexes["goodnight"] = (idx + 1) % len(videos)
 
-    elif any(word in text for word in ["السلام عليكم", "السلام", "سلام عليكم"]):
+    elif any(word in text for word in ["السلام عليكم", "سلام عليكم"]):
         video_id = "BAACAgQAAxkBAAMoapimHFS2kS1j3lojepDovQ_a5d4AAlUiAAKiYchQe5xlUj_65Nw9BA"
         await update.message.reply_video(video=video_id)
 
-    elif any(word in text for word in ["صباح الخير", "صباحكم", "صباح النور"]):
+    elif any(word in text for word in ["صباح الخير", "صباحكم"]):
         videos = [
             "BAACAgQAAxkBAAMsapinDR4uqZvycOwYxLYBaeRuU9gAAlciAAKiYchQIb6R77dHRVQ9BA",
             "BAACAgQAAxkBAAMyapior0SYvfQFkA9GlX52XR0OphgAAl0iAAKiYchQ34PP6SyXy8A9BA",
+            "BAACAgQAAxkBAAM0appmumK9STPgzTWPJUvIzjKbV5wAAi4hAAJa3tBQDiLGbr-aNEk9BA",
             "BAACAgQAAxkBAAMuapin_cV97tjomZc1VEtXoNOxc1EAAloiAAKiYchQle1xx7TgpPQ9BA"
         ]
+
         idx = rotation_indexes["morning"]
         await update.message.reply_video(video=videos[idx])
         rotation_indexes["morning"] = (idx + 1) % len(videos)
