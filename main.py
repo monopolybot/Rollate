@@ -58,7 +58,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # 5. تمرير الرسالة للردود التلقائية (صباح الخير، السلام عليكم، إلخ) إذا لم تكن أمراً خاصاً بالأعلى
-    await handle_auto_responses(update, context)
+    #await handle_auto_responses(update, context)
 
 if __name__ == '__main__':
     forced_token = BOT_TOKEN
