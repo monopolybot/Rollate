@@ -53,7 +53,7 @@ def fetch_amman_prayer_times():
     
     return cached_prayer_times
 
-async def handle_auto_responses(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#async def handle_auto_responses(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
 
