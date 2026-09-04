@@ -47,6 +47,10 @@ def fetch_amman_prayer_times():
     
     return cached_prayer_times
 
+# دالة فارغة لمنع حدوث خطأ الاستيراد في main.py مع إيقاف الردود التلقائية القديمة
+async def handle_auto_responses(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    pass
+
 async def schedule_loop(application):
     sent_today = {"morning_6": False, "morning_10": False, "evening_20": False, "evening_23": False}
     sent_prayers = {}
