@@ -1,7 +1,7 @@
 import os
 
 # بيانات البوت الأساسية
-BOT_TOKEN = "8752382180:AAGTpNLCcbQPHdK3GWn-AZ3ilMfDutjz2PA"
+BOT_TOKEN = "8752382180:AAHCubGvWXheYueaWpMAZxptSWCNI5a7KFk"
 OWNER_ID = 5010882230
 
 # المجموعات المسموح لها باستخدام البوت
