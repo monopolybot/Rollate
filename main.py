@@ -76,7 +76,9 @@ if __name__ == '__main__':
     
     # تسجيل الهاندلرز بالترتيب الصحيح
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
-    app.add_handler(CallbackQueryHandler(button_callback_handler))
+    # اجعل معالج الألبومات يلتقط أزراره الخاصة فقط (مثلاً التي لا تبدأ بـ show_scoreboard أو close_score)
+    app.add_handler(CallbackQueryHandler(button_callback_handler, pattern="^(?!show_scoreboard|close_score).*$"))
+
     #setup_vision_handler(app)
     register_extractor_handler(app)
     register_auto_responses(app)
