@@ -1219,95 +1219,50 @@ async def handle_game_message(
         # -------------------------------------------------
 
 
-# =========================================================
-# أزرار دفتر النتائج
-# =========================================================
-
-async def callback_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
+async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-
-    if not query:
-        return
-
-    data = query.data
-
-    if not data:
-        return
-
-    if not query.message:
+    if not query or not query.data or not query.message:
         return
 
     chat_id = query.message.chat_id
+    data = query.data
 
-    # =====================================================
-    # عرض دفتر النتائج
-    # =====================================================
+    print(f"📥 تم استقبال ضغطة زر بقيمة: {data} من المجموعة: {chat_id}")
 
     if data == "show_scoreboard":
-
-        scoreboard_text = build_scoreboard_text(
-            chat_id
-        )
-
+        scoreboard_text = build_scoreboard_text(chat_id)
         try:
-            # محاولة إرسال دفتر النتائج كرسالة جديدة مستقلة في المجموعة لضمان ظهورها للجميع
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=scoreboard_text,
                 parse_mode="HTML",
                 reply_markup=create_scoreboard_keyboard(),
             )
-
         except Exception as e:
+            print(f"❌ خطأ في إرسال دفتر النتائج: {e}")
 
-            print(
-                f"❌ خطأ في عرض دفتر النتائج: {e}"
-            )
-
-        # الرد على الضغطة لمنع دوران زر التحميل في تطبيق المستخدم
         try:
-            await query.answer("📊 إليك دفتر النتائج الحالي")
+            await query.answer("📊 إليك دفتر النتائج")
         except Exception:
             pass
-
         return
 
-
-    # =====================================================
-    # إغلاق دفتر النتائج
-    # =====================================================
-
     if data == "close_score":
-
         try:
-
             await query.message.delete()
-
         except Exception as e:
-
-            print(
-                f"⚠️ تعذر حذف دفتر النتائج: {e}"
-            )
-
+            print(f"⚠️ تعذر حذف دفتر النتائج: {e}")
         try:
             await query.answer("تم الإغلاق")
         except Exception:
             pass
-
         return
-
-    # =====================================================
-    # أي Callback غير معروف
-    # =====================================================
 
     try:
         await query.answer()
     except Exception:
         pass
+
 
 
 
@@ -1340,12 +1295,12 @@ def setup_game_handlers(app):
     # أزرار دفتر النتائج
     # -----------------------------------------------------
 
-    app.add_handler(
+        app.add_handler(
         CallbackQueryHandler(
-            callback_handler,
-            pattern=r"^(show_scoreboard|close_score)$"
+            callback_handler
         )
     )
+
 
     print(
         "✅ تم تحميل نظام لعبة الغباش بنجاح."
