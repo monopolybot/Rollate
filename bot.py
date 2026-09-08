@@ -1330,11 +1330,12 @@ def setup_game_handlers(app):
     # -----------------------------------------------------
 
     app.add_handler(
-        MessageHandler(
-            filters.TEXT & (~filters.COMMAND),
-            handle_game_message
-        )
-    )
+    MessageHandler(
+        filters.TEXT & (~filters.COMMAND),
+        handle_game_message
+    ),
+    group=1
+)
 
     # -----------------------------------------------------
     # أزرار دفتر النتائج
