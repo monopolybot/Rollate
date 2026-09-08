@@ -1294,12 +1294,12 @@ def setup_game_handlers(app):
     # -----------------------------------------------------
     # أزرار دفتر النتائج
     # -----------------------------------------------------
-
-        app.add_handler(
+    app.add_handler(
         CallbackQueryHandler(
             callback_handler
         )
     )
+
 
 
     print(
