@@ -137,32 +137,34 @@ def create_scoreboard_keyboard():
 
 async def encouragement_loop(application, chat_id):
     """
-    إرسال رسائل تشجيعية كل 5 ثوانٍ لمدة 30 ثانية.
+    إرسال رسالة تشجيعية كل 10 ثوانٍ
+    والاستمرار حتى يتم حل اللغز.
     """
 
-    elapsed = 0
-
     try:
+        while True:
 
-        while elapsed < 30:
+            await asyncio.sleep(10)
 
-            await asyncio.sleep(5)
-
-            elapsed += 5
-
-            # إذا انتهت الجولة لا نرسل المزيد
+            # إذا انتهت اللعبة أو تم حذفها
             if chat_id not in active_games:
                 break
 
+            # إذا وجدنا الفائز، نوقف التذكيرات
             if active_games[chat_id].get("winner_found", False):
                 break
 
-            encouraging_text = (
-                f"⏳ <b>مضى {elapsed} ثواني على صورة الغباش "
-                f"ولم يتم حل اللغز!</b> ⏳\n\n"
-                "⚡ <b>أين أنتم يا عشاق التحدي؟!</b>\n"
-                "استيقظوا واكشفوا الكلمة! ⚡"
-            )
+    encouraging_text = (
+    "⏳ <b>┏━━━━━━━━━━━━━━━━━━┓</b>\n"
+    "🔥 <b>تـحـدي الـغـبـاش مـسـتـمـر!</b> 🔥\n"
+    "💎 <b>مـا زال الـلـغـز بـانـتـظـار الـحـل!</b> 💎\n"
+    "<b>┗━━━━━━━━━━━━━━━━━━┛</b>\n\n"
+    "⚡ <b>أيـن أنـتـم يـا عـشـاق الـتـحـدي؟!</b> ⚡\n\n"
+    "🧩 <b>اكـشـفـوا الـصـورة...</b>\n"
+    "🧠 <b>واجـمـعـوا الأحـرف...</b>\n"
+    "🏆 <b>وأثـبـتـوا أنـكـم أسـاطـيـر الـغـبـاش!</b> 🏆"
+)
+
 
             try:
 
@@ -175,14 +177,14 @@ async def encouragement_loop(application, chat_id):
             except Exception as e:
 
                 print(
-                    f"❌ خطأ في رسالة التشجيع للمجموعة "
-                    f"{chat_id}: {e}"
+                    f"❌ خطأ في رسالة التشجيع "
+                    f"للمجموعة {chat_id}: {e}"
                 )
 
                 break
 
     except asyncio.CancelledError:
-        # المهمة تم إيقافها بشكل طبيعي
+        # يتم إيقاف المهمة بشكل طبيعي عند حل اللغز
         pass
 
     except Exception as e:
@@ -191,6 +193,7 @@ async def encouragement_loop(application, chat_id):
             f"❌ خطأ غير متوقع في encouragement_loop "
             f"للمجموعة {chat_id}: {e}"
         )
+
 
 
 # =========================================================
