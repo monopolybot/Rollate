@@ -8,7 +8,7 @@ from buttons_handler import start_card_selection, button_callback_handler
 #from vision_engine import setup_vision_handler
 from file_id_extractor import register_extractor_handler
 from auto_responses import register_auto_responses, handle_auto_responses
-
+from bot import setup_game_handlers
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # صمام الأمان: تجاهل التحديثات التي لا تحتوي على رسالة نصية
     if not update.message or not update.message.text:
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     #setup_vision_handler(app)
     register_extractor_handler(app)
     register_auto_responses(app)
-    
+    setup_game_handlers(client)
     # --- التعديل الآمن لربط المهمة بدورة حياة التطبيق بشكل دائم ---
     async def post_init(application):
         import asyncio
