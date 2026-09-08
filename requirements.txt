@@ -3,3 +3,4 @@ tinydb
 pytesseract
 Pillow
 google-genai
+telethon
