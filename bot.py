@@ -1249,20 +1249,6 @@ async def callback_handler(
 
     if data == "show_scoreboard":
 
-        scores = user_scores.get(
-            chat_id,
-            {}
-        )
-
-        if not scores:
-
-            await query.answer(
-                "📭 دفتر النتائج فارغ حتى الآن!",
-                show_alert=True
-            )
-
-            return
-
         scoreboard_text = build_scoreboard_text(
             chat_id
         )
@@ -1284,6 +1270,7 @@ async def callback_handler(
         await query.answer()
 
         return
+
 
     # =====================================================
     # إغلاق دفتر النتائج
