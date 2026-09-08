@@ -1254,9 +1254,10 @@ async def callback_handler(
         )
 
         try:
-
-            await query.message.reply_text(
-                scoreboard_text,
+            # محاولة إرسال دفتر النتائج كرسالة جديدة مستقلة في المجموعة لضمان ظهورها للجميع
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=scoreboard_text,
                 parse_mode="HTML",
                 reply_markup=create_scoreboard_keyboard(),
             )
@@ -1267,7 +1268,11 @@ async def callback_handler(
                 f"❌ خطأ في عرض دفتر النتائج: {e}"
             )
 
-        await query.answer()
+        # الرد على الضغطة لمنع دوران زر التحميل في تطبيق المستخدم
+        try:
+            await query.answer("📊 إليك دفتر النتائج الحالي")
+        except Exception:
+            pass
 
         return
 
@@ -1288,7 +1293,10 @@ async def callback_handler(
                 f"⚠️ تعذر حذف دفتر النتائج: {e}"
             )
 
-        await query.answer()
+        try:
+            await query.answer("تم الإغلاق")
+        except Exception:
+            pass
 
         return
 
@@ -1296,7 +1304,11 @@ async def callback_handler(
     # أي Callback غير معروف
     # =====================================================
 
-    await query.answer()
+    try:
+        await query.answer()
+    except Exception:
+        pass
+
 
 
 # =========================================================
