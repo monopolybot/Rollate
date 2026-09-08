@@ -8,13 +8,14 @@ GAMES_LIST = [
         "id": 3,
         "spoiler_file_id": "AgACAgQAAxkBAAM4aqAOgoSz2xm4ouiLmWr0UAK08i4AAgwQaxuCQ_lQU3f7CtC9CssBAAMCAAN5AAM9BA",
         "answer_file_id": "AgACAgQAAxkBAAM-aqAQvrNbpcZ7pda2HT6DU7LDy3YAAg0QaxuCQ_lQ9c6BscarZs0BAAMCAAN5AAM9BA",
-        "correct_answer": "ميران"
+        "correct_answer": "ميران",
     }
 ]
 
 
 active_games = {}
 user_scores = {}
+
 
 def setup_game_handlers(app):
     # هاندلر لبدء لعبة الغباش عند كتابة كلمة "غباش"
@@ -51,13 +52,13 @@ def setup_game_handlers(app):
         try:
             sent_msg = await context.bot.send_photo(
                 chat_id=chat_id,
-                photo=q_data["spoiler_file_id"],
+                photo=str(q_data["spoiler_file_id"]),
                 reply_markup=reply_markup,
                 has_spoiler=True
             )
         except Exception as e:
             print(f"❌ [خطأ تقني في لعبة الغباش - إرسال صورة الغباش]: {e}")
-            await update.message.reply_text("❌ حدث خطأ أثناء إرسال الصورة.")
+            await update.message.reply_text(f"❌ حدث خطأ أثناء إرسال الصورة: {e}")
             return
 
         # تشغيل حلقة التشجيع في الخلفية
@@ -118,7 +119,7 @@ def setup_game_handlers(app):
 
             try:
                 await update.message.reply_photo(
-                    photo=q_data["answer_file_id"],
+                    photo=str(q_data["answer_file_id"]),
                     caption=(
                         "🎉 **مبروووووك يا بطل** 🎉\n\n"
                         "✅ **جوابك صحيح ١٠٠٪** ✅\n\n"
