@@ -689,9 +689,11 @@ def setup_game_handlers(app):
         group=1
     )
 
+    # إضافة الـ pattern هنا لتوجيه أزرار دفتر النتائج حصراً
     app.add_handler(
         CallbackQueryHandler(
-            callback_handler
+            callback_handler,
+            pattern="^(show_scoreboard|close_score)$"
         )
     )
 
