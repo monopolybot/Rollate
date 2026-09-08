@@ -80,7 +80,8 @@ if __name__ == '__main__':
     #setup_vision_handler(app)
     register_extractor_handler(app)
     register_auto_responses(app)
-    setup_game_handlers(client)
+    setup_game_handlers(app)
+
     # --- التعديل الآمن لربط المهمة بدورة حياة التطبيق بشكل دائم ---
     async def post_init(application):
         import asyncio
