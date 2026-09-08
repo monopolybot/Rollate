@@ -10,6 +10,7 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
+
 from telegram.ext import (
     ContextTypes,
     MessageHandler,
@@ -147,9 +148,9 @@ ENCOURAGEMENT_INTERVAL = 10
 # =========================================================
 
 # active_games[chat_id] = {
-#     "question_index": 0,
-#     "winner_found": False,
-#     "encouragement_task": task
+#     "question_index": رقم السؤال الحالي,
+#     "winner_found": هل تم حل السؤال الحالي؟
+#     "encouragement_task": مهمة رسائل التشجيع
 # }
 
 active_games = {}
@@ -160,9 +161,9 @@ active_games = {}
 # =========================================================
 
 # user_scores[chat_id][user_id] = {
-#     "name": "...",
-#     "points": 0,   # النقاط التراكمية
-#     "streak": 0    # عداد الفوز المتتالي من 5
+#     "name": اسم اللاعب,
+#     "points": النقاط التراكمية,
+#     "streak": عداد الانتصارات المتتالية من 5
 # }
 
 user_scores = {}
@@ -172,13 +173,15 @@ user_scores = {}
 # أقفال المجموعات
 # =========================================================
 
-# يمنع تسجيل فائزين في نفس الجولة
-# إذا وصلت إجابتان في نفس اللحظة تقريبًا.
-
 game_locks = {}
 
 
 def get_game_lock(chat_id):
+    """
+    إنشاء قفل خاص بكل مجموعة.
+    يمنع تسجيل فائزين في نفس اللحظة.
+    """
+
     if chat_id not in game_locks:
         game_locks[chat_id] = asyncio.Lock()
 
@@ -186,12 +189,12 @@ def get_game_lock(chat_id):
 
 
 # =========================================================
-# تنظيف الإجابات
+# تنظيف وتوحيد الإجابات
 # =========================================================
 
 def normalize_answer(text):
     """
-    توحيد الإجابة العربية قبل المقارنة.
+    توحيد الإجابات العربية قبل المقارنة.
 
     مثال:
     الأردن
@@ -203,7 +206,7 @@ def normalize_answer(text):
     if not text:
         return ""
 
-    text = text.strip().lower()
+    text = str(text).strip().lower()
 
     # إزالة التشكيل
     text = "".join(
@@ -239,6 +242,9 @@ def normalize_answer(text):
 # =========================================================
 
 def get_current_game(chat_id):
+    """
+    إرجاع السؤال الحالي للمجموعة.
+    """
 
     game = active_games.get(chat_id)
 
@@ -251,9 +257,7 @@ def get_current_game(chat_id):
     )
 
     if question_index >= len(GAMES_LIST):
-
         question_index = 0
-
         game["question_index"] = 0
 
     return GAMES_LIST[question_index]
@@ -264,6 +268,9 @@ def get_current_game(chat_id):
 # =========================================================
 
 def create_score_button():
+    """
+    زر عرض دفتر النتائج.
+    """
 
     keyboard = [
         [
@@ -278,7 +285,7 @@ def create_score_button():
 
 
 # =========================================================
-# أزرار دفتر النتائج
+# زر إغلاق دفتر النتائج
 # =========================================================
 
 def create_scoreboard_keyboard():
@@ -286,20 +293,10 @@ def create_scoreboard_keyboard():
     keyboard = [
         [
             InlineKeyboardButton(
-                "◀️ السابق",
-                callback_data="prev_score"
-            ),
-            InlineKeyboardButton(
-                "التالي ▶️",
-                callback_data="next_score"
-            ),
-        ],
-        [
-            InlineKeyboardButton(
                 "❌ إغلاق",
                 callback_data="close_score"
             )
-        ],
+        ]
     ]
 
     return InlineKeyboardMarkup(keyboard)
@@ -310,8 +307,22 @@ def create_scoreboard_keyboard():
 # =========================================================
 
 def build_scoreboard_text(chat_id):
+    """
+    دفتر النتائج يعتمد على النقاط التراكمية فقط.
 
-    scores = user_scores.get(chat_id, {})
+    مثال:
+
+    أنس = 7 نقاط
+    لؤي = 4 نقاط
+    فاتن = 3 نقاط
+
+    عداد 5/5 لا يظهر هنا.
+    """
+
+    scores = user_scores.get(
+        chat_id,
+        {}
+    )
 
     if not scores:
         return (
@@ -324,7 +335,10 @@ def build_scoreboard_text(chat_id):
     # الترتيب حسب النقاط التراكمية
     sorted_users = sorted(
         scores.values(),
-        key=lambda item: item.get("points", 0),
+        key=lambda item: (
+            item.get("points", 0),
+            item.get("name", "")
+        ),
         reverse=True
     )
 
@@ -334,13 +348,20 @@ def build_scoreboard_text(chat_id):
         "📊 <b>╚════════════════════════╝</b>\n\n"
     )
 
-    for index, item in enumerate(
-        sorted_users[:10],
-        start=1
-    ):
+    limit = min(
+        len(sorted_users),
+        10
+    )
+
+    for index in range(limit):
+
+        item = sorted_users[index]
 
         name = html.escape(
-            item.get("name", "المتحدي")
+            item.get(
+                "name",
+                "المتحدي"
+            )
         )
 
         points = item.get(
@@ -349,15 +370,11 @@ def build_scoreboard_text(chat_id):
         )
 
         score_text += (
-            f"🏅 <b>{index}. {name}</b>\n"
+            f"🏅 <b>{index + 1}. {name}</b>\n"
             f"   ⭐ <b>{points} نقطة</b>\n"
         )
 
-        # فاصل عريض بين اللاعبين
-        if index < min(
-            len(sorted_users),
-            10
-        ):
+        if index < limit - 1:
             score_text += (
                 "━━━━━━━━━━━━━━━━━━━━\n"
             )
@@ -382,10 +399,15 @@ async def encouragement_loop(
                 ENCOURAGEMENT_INTERVAL
             )
 
-            if chat_id not in active_games:
+            game = active_games.get(
+                chat_id
+            )
+
+            if not game:
                 break
 
-            if active_games[chat_id].get(
+            # إذا تم حل السؤال، نتوقف
+            if game.get(
                 "winner_found",
                 False
             ):
@@ -433,6 +455,31 @@ async def encouragement_loop(
 
 
 # =========================================================
+# إلغاء مهمة التشجيع
+# =========================================================
+
+def cancel_encouragement_task(chat_id):
+
+    game = active_games.get(
+        chat_id
+    )
+
+    if not game:
+        return
+
+    task = game.get(
+        "encouragement_task"
+    )
+
+    if task and not task.done():
+        task.cancel()
+
+    game[
+        "encouragement_task"
+    ] = None
+
+
+# =========================================================
 # بدء لعبة الغباش
 # =========================================================
 
@@ -470,205 +517,231 @@ async def start_game(
 
         return
 
-    # -----------------------------------------------------
-    # إنشاء حالة اللعبة
-    # -----------------------------------------------------
+    lock = get_game_lock(
+        chat_id
+    )
 
-    if chat_id not in active_games:
+    async with lock:
 
-        active_games[chat_id] = {
-            "question_index": 0,
-            "winner_found": False,
-            "encouragement_task": None,
-        }
+        # -------------------------------------------------
+        # إذا كانت هناك جولة حالية لم تُحل بعد
+        # فلا نعيد إرسال نفس السؤال.
+        # -------------------------------------------------
 
-    else:
+        if chat_id in active_games:
 
-        current_index = active_games[
-            chat_id
-        ].get(
-            "question_index",
-            0
-        )
-
-        if current_index >= len(
-            GAMES_LIST
-        ):
-
-            active_games[
+            game = active_games[
                 chat_id
-            ]["question_index"] = 0
+            ]
 
-    # -----------------------------------------------------
-    # إلغاء التشجيع القديم
-    # -----------------------------------------------------
+            if not game.get(
+                "winner_found",
+                False
+            ):
 
-    old_task = active_games[
-        chat_id
-    ].get(
-        "encouragement_task"
-    )
+                await update.message.reply_text(
+                    (
+                        "⏳ <b>السؤال الحالي ما زال مفتوحاً!</b>\n\n"
+                        "🏆 <b>أجيبوا على السؤال أولاً، "
+                        "وبعد ظهور الإجابة الصحيحة يمكن كتابة "
+                        "«غباش» لبدء السؤال التالي.</b>"
+                    ),
+                    parse_mode="HTML"
+                )
 
-    if old_task and not old_task.done():
+                return
 
-        old_task.cancel()
+        # -------------------------------------------------
+        # إنشاء حالة اللعبة أو استخدام الحالة الحالية
+        # -------------------------------------------------
 
-    # -----------------------------------------------------
-    # تجهيز الجولة
-    # -----------------------------------------------------
+        if chat_id not in active_games:
 
-    active_games[
-        chat_id
-    ]["winner_found"] = False
+            active_games[chat_id] = {
+                "question_index": 0,
+                "winner_found": False,
+                "encouragement_task": None,
+            }
 
-    q_data = get_current_game(
-        chat_id
-    )
+        else:
 
-    if not q_data:
+            game = active_games[
+                chat_id
+            ]
 
-        await update.message.reply_text(
-            "❌ حدث خطأ في تحميل سؤال اللعبة."
-        )
+            # السؤال التالي يبدأ من index الموجود
+            game[
+                "winner_found"
+            ] = False
 
-        return
+        game = active_games[
+            chat_id
+        ]
 
-    # -----------------------------------------------------
-    # رسالة البداية
-    # -----------------------------------------------------
+        # -------------------------------------------------
+        # إلغاء التشجيع القديم
+        # -------------------------------------------------
 
-    start_msg_text = (
-        "👑 <b>╔══════════════════════╗</b>\n"
-        "👑 <b>   تـحـدي الـغـبـاش الـمـلـكـي   </b> 👑\n"
-        "👑 <b>╚══════════════════════╝</b>\n\n"
-
-        "🔥 <b>يـا أسـاطـيـر شـعـب مـونـوبـولـي الـعـظـيـم</b> 🔥\n\n"
-
-        "🎯 <b>لـقـد بـدأ الـتـحـدي!</b> 🎯\n\n"
-
-        "🧩 <b>طـريـقـة الـلـعـب:</b>\n"
-        "👆 <b>اضـغـطـوا عـلـى صـورة الـغـبـاش لـكـشـفـهـا</b>\n"
-        "🔤 <b>اجـمـعـوا الأحـرف الـظـاهـرة فـي الـصـورة</b>\n"
-        "🧠 <b>اكـتـبـوا الـكـلـمـة الـصـحـيـحـة فـي الـمـجـمـوعـة</b>\n\n"
-
-        "🏆 <b>الـفـوز لـمـن يـكـتـشـف الـكـلـمـة أولاً!</b> 🏆\n"
-        "⚡ <b>حـظـاً مـوفـقـاً لـجـمـيـع الـمـتـحـديـن!</b> ⚡"
-    )
-
-    try:
-
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=start_msg_text,
-            parse_mode="HTML",
-        )
-
-    except Exception as e:
-
-        print(
-            f"❌ خطأ في إرسال رسالة "
-            f"بداية الغباش: {e}"
-        )
-
-        return
-
-    # -----------------------------------------------------
-    # زر النتائج
-    # -----------------------------------------------------
-
-    reply_markup = create_score_button()
-
-    # -----------------------------------------------------
-    # إرسال صورة الغباش
-    # -----------------------------------------------------
-
-    try:
-
-        await context.bot.send_photo(
-            chat_id=chat_id,
-            photo=q_data[
-                "spoiler_file_id"
-            ],
-            reply_markup=reply_markup,
-            has_spoiler=True,
-        )
-
-        print(
-            f"✅ تم إرسال صورة الغباش "
-            f"للمجموعة {chat_id} "
-            f"السؤال {q_data['id']}"
-        )
-
-    except Exception as e:
-
-        import traceback
-
-        print(
-            "\n"
-            "==========================================\n"
-            "❌ خطأ في إرسال صورة الغباش\n"
-            "=========================================="
-        )
-
-        print(
-            "Chat ID:",
+        cancel_encouragement_task(
             chat_id
         )
 
-        print(
-            "Question ID:",
-            q_data.get("id")
+        # -------------------------------------------------
+        # الحصول على السؤال
+        # -------------------------------------------------
+
+        q_data = get_current_game(
+            chat_id
         )
 
-        print(
-            "File ID:",
-            repr(
-                q_data.get(
+        if not q_data:
+
+            await update.message.reply_text(
+                "❌ حدث خطأ في تحميل سؤال اللعبة."
+            )
+
+            return
+
+        # -------------------------------------------------
+        # رسالة بداية السؤال
+        # -------------------------------------------------
+
+        start_msg_text = (
+            "👑 <b>╔══════════════════════╗</b>\n"
+            "👑 <b>   تـحـدي الـغـبـاش الـمـلـكـي   </b> 👑\n"
+            "👑 <b>╚══════════════════════╝</b>\n\n"
+
+            "🔥 <b>يـا أسـاطـيـر شـعـب مـونـوبـولـي الـعـظـيـم</b> 🔥\n\n"
+
+            "🎯 <b>لـقـد بـدأ الـتـحـدي!</b> 🎯\n\n"
+
+            "🧩 <b>طـريـقـة الـلـعـب:</b>\n"
+            "👆 <b>اضـغـطـوا عـلـى صـورة الـغـبـاش لـكـشـفـهـا</b>\n"
+            "🔤 <b>اجـمـعـوا الأحـرف الـظـاهـرة فـي الـصـورة</b>\n"
+            "🧠 <b>اكـتـبـوا الـكـلـمـة الـصـحـيـحـة فـي الـمـجـمـوعـة</b>\n\n"
+
+            "🏆 <b>الـفـوز لـمـن يـكـتـشـف الـكـلـمـة أولاً!</b> 🏆\n"
+            "⚡ <b>حـظـاً مـوفـقـاً لـجـمـيـع الـمـتـحـديـن!</b> ⚡"
+        )
+
+        # -------------------------------------------------
+        # إرسال رسالة البداية
+        # -------------------------------------------------
+
+        try:
+
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=start_msg_text,
+                parse_mode="HTML",
+            )
+
+        except Exception as e:
+
+            print(
+                f"❌ خطأ في إرسال رسالة "
+                f"بداية الغباش للمجموعة {chat_id}: {e}"
+            )
+
+            return
+
+        # -------------------------------------------------
+        # زر دفتر النتائج
+        # -------------------------------------------------
+
+        reply_markup = create_score_button()
+
+        # -------------------------------------------------
+        # إرسال صورة الغباش
+        # -------------------------------------------------
+
+        try:
+
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=q_data[
                     "spoiler_file_id"
+                ],
+                reply_markup=reply_markup,
+                has_spoiler=True,
+            )
+
+            print(
+                f"✅ تم إرسال صورة الغباش "
+                f"للمجموعة {chat_id} "
+                f"السؤال {q_data['id']}"
+            )
+
+        except Exception as e:
+
+            import traceback
+
+            print(
+                "\n"
+                "==========================================\n"
+                "❌ خطأ في إرسال صورة الغباش\n"
+                "=========================================="
+            )
+
+            print(
+                "Chat ID:",
+                chat_id
+            )
+
+            print(
+                "Question ID:",
+                q_data.get("id")
+            )
+
+            print(
+                "File ID:",
+                repr(
+                    q_data.get(
+                        "spoiler_file_id"
+                    )
                 )
+            )
+
+            print(
+                "Error Type:",
+                type(e).__name__
+            )
+
+            print(
+                "Error:",
+                repr(e)
+            )
+
+            traceback.print_exc()
+
+            print(
+                "==========================================\n"
+            )
+
+            await update.message.reply_text(
+                "❌ حدث خطأ أثناء إرسال صورة الغباش."
+            )
+
+            return
+
+        # -------------------------------------------------
+        # تشغيل التشجيع
+        # -------------------------------------------------
+
+        task = asyncio.create_task(
+            encouragement_loop(
+                context.application,
+                chat_id
             )
         )
 
-        print(
-            "Error Type:",
-            type(e).__name__
-        )
-
-        print(
-            "Error:",
-            repr(e)
-        )
-
-        traceback.print_exc()
-
-        print(
-            "==========================================\n"
-        )
-
-        await update.message.reply_text(
-            "❌ حدث خطأ أثناء إرسال صورة الغباش."
-        )
-
-        return
-
-    # -----------------------------------------------------
-    # تشغيل التشجيع
-    # -----------------------------------------------------
-
-    task = asyncio.create_task(
-        encouragement_loop(
-            context.application,
-            chat_id
-        )
-    )
-
-    active_games[
-        chat_id
-    ]["encouragement_task"] = task
+        game[
+            "encouragement_task"
+        ] = task
 
 
 # =========================================================
-# استقبال إجابات اللاعبين
+# استقبال جميع الرسائل النصية
 # =========================================================
 
 async def handle_game_message(
@@ -696,27 +769,41 @@ async def handle_game_message(
 
     chat_id = chat.id
 
-    # لا توجد لعبة
+    user_text = update.message.text.strip()
+
+    normalized_text = normalize_answer(
+        user_text
+    )
+
+    # =====================================================
+    # كلمة "غباش"
+    # =====================================================
+    #
+    # هنا يتم بدء اللعبة.
+    #
+    # لا نعتمد على filters.Regex منفصل.
+    # هذا يمنع المشكلة السابقة.
+    # =====================================================
+
+    if normalized_text == normalize_answer("غباش"):
+
+        await start_game(
+            update,
+            context
+        )
+
+        return
+
+    # =====================================================
+    # إذا لم توجد لعبة
+    # =====================================================
+
     if chat_id not in active_games:
         return
 
-    # -----------------------------------------------------
-    # كلمة غباش تبدأ اللعبة من خلال start_game
-    # لذلك لا نعالجها كإجابة
-    # -----------------------------------------------------
-
-    user_text = update.message.text.strip()
-
-    if normalize_answer(
-        user_text
-    ) == normalize_answer("غباش"):
-
-        return
-
-    # -----------------------------------------------------
-    # القفل مهم جدًا
-    # لمنع فوز شخصين في نفس السؤال
-    # -----------------------------------------------------
+    # =====================================================
+    # القفل لمنع فوز لاعبين بنفس السؤال
+    # =====================================================
 
     lock = get_game_lock(
         chat_id
@@ -724,13 +811,21 @@ async def handle_game_message(
 
     async with lock:
 
-        # إعادة الفحص بعد الحصول على القفل
+        # -------------------------------------------------
+        # إعادة فحص اللعبة بعد الحصول على القفل
+        # -------------------------------------------------
+
         if chat_id not in active_games:
             return
 
         game = active_games[
             chat_id
         ]
+
+        # -------------------------------------------------
+        # إذا تم حل السؤال مسبقاً
+        # فلا نقبل أي إجابة أخرى.
+        # -------------------------------------------------
 
         if game.get(
             "winner_found",
@@ -750,7 +845,7 @@ async def handle_game_message(
             return
 
         # -------------------------------------------------
-        # مقارنة الإجابة
+        # الإجابة الصحيحة
         # -------------------------------------------------
 
         correct_answer = normalize_answer(
@@ -763,11 +858,16 @@ async def handle_game_message(
             user_text
         )
 
+        # -------------------------------------------------
+        # إذا كانت الإجابة خاطئة
+        # لا يحدث أي شيء.
+        # -------------------------------------------------
+
         if submitted_answer != correct_answer:
             return
 
         # -------------------------------------------------
-        # تسجيل الفائز فورًا
+        # تسجيل الفائز فوراً
         # -------------------------------------------------
 
         game[
@@ -775,16 +875,12 @@ async def handle_game_message(
         ] = True
 
         # -------------------------------------------------
-        # إيقاف التشجيع
+        # إيقاف رسائل التشجيع
         # -------------------------------------------------
 
-        task = game.get(
-            "encouragement_task"
+        cancel_encouragement_task(
+            chat_id
         )
-
-        if task and not task.done():
-
-            task.cancel()
 
         # -------------------------------------------------
         # بيانات اللاعب
@@ -799,6 +895,7 @@ async def handle_game_message(
 
         user_name = (
             user.first_name
+            or user.username
             or "المتحدي"
         )
 
@@ -853,7 +950,7 @@ async def handle_game_message(
         ] += 1
 
         # -------------------------------------------------
-        # إضافة فوز متتالي للاعب نفسه
+        # إضافة انتصار متتالي
         # -------------------------------------------------
 
         player[
@@ -869,8 +966,39 @@ async def handle_game_message(
         ]
 
         # -------------------------------------------------
-        # إرسال الصورة الصحيحة
+        # هل وصل اللاعب إلى 5؟
         # -------------------------------------------------
+
+        reached_five = (
+            current_streak >= WIN_TARGET
+        )
+
+        # =================================================
+        # رسالة الإجابة الصحيحة
+        # =================================================
+
+        correct_caption = (
+            "🏆 <b>╔════════════════════╗</b> 🏆\n"
+            "✨ <b>مـبـرووووك يـا بـطـل!</b> ✨\n"
+            "🏆 <b>╚════════════════════╝</b> 🏆\n\n"
+
+            "🎉 <b>إجـابـتـك صـحـيـحـة ١٠٠٪</b> 🎉\n\n"
+
+            f"🥇 <b>الـفـوز رقـم "
+            f"{current_streak} / {WIN_TARGET}</b> 🥇\n\n"
+
+            f"⭐ <b>رصـيـدك الـتـراكـمـي: "
+            f"{total_points} نـقـطـة</b> ⭐\n\n"
+
+            "💎 <b>أبـدعـت فـي تـحـدي الـغـبـاش!</b> 💎\n"
+            "🔥 <b>نـقـطـة جـديـدة تُـضـاف إلـى رصـيـدك</b> 🔥\n\n"
+
+            "📢 <b>لـلـسـؤال الـتـالـي اكتبوا: غباش</b>"
+        )
+
+        # =================================================
+        # إرسال صورة الإجابة الصحيحة
+        # =================================================
 
         try:
 
@@ -880,25 +1008,7 @@ async def handle_game_message(
                     "answer_file_id"
                 ],
 
-                caption=(
-                    "🏆 <b>╔════════════════════╗</b> 🏆\n"
-                    "✨ <b>مـبـرووووك يـا بـطـل!</b> ✨\n"
-                    "🏆 <b>╚════════════════════╝</b> 🏆\n\n"
-
-                    "🎉 <b>إجـابـتـك صـحـيـحـة ١٠٠٪</b> 🎉\n\n"
-
-                    f"🥇 <b>الـفـوز رقـم "
-                    f"{current_streak} / {WIN_TARGET}</b> 🥇\n\n"
-
-                    f"⭐ <b>رصـيـدك الـتـراكـمـي: "
-                    f"{total_points} نـقـطـة</b> ⭐\n\n"
-
-                    "💎 <b>أبـدعـت فـي تـحـدي الـغـبـاش!</b> 💎\n"
-                    "🔥 <b>نـقـطـة جـديـدة تُـضـاف إلـى رصـيـدك</b> 🔥\n\n"
-
-                    "👑 <b>اسـتـمـر فـي الـتـحـدي... "
-                    "والـقـادم أصـعـب!</b> 👑"
-                ),
+                caption=correct_caption,
 
                 parse_mode="HTML",
 
@@ -970,25 +1080,26 @@ async def handle_game_message(
                 "==========================================\n"
             )
 
-            await update.message.reply_text(
-                (
-                    f"✅ <b>إجابتك صحيحة!</b>\n\n"
-                    f"🥇 <b>الفوز رقم "
-                    f"{current_streak} / {WIN_TARGET}</b>\n"
-                    f"⭐ <b>رصيدك التراكمي: "
-                    f"{total_points} نقطة</b>"
-                ),
-                parse_mode="HTML",
-                reply_markup=create_score_button(),
-            )
+            # حتى لو فشلت صورة الإجابة،
+            # نرسل رسالة نصية.
+            try:
 
-        # -------------------------------------------------
-        # هل وصل اللاعب إلى 5 / 5؟
-        # -------------------------------------------------
+                await update.message.reply_text(
+                    correct_caption,
+                    parse_mode="HTML",
+                    reply_markup=create_score_button(),
+                )
 
-        reached_five = (
-            current_streak >= WIN_TARGET
-        )
+            except Exception as reply_error:
+
+                print(
+                    f"❌ فشل إرسال رسالة الإجابة النصية: "
+                    f"{reply_error}"
+                )
+
+        # =================================================
+        # إذا وصل اللاعب إلى 5 انتصارات
+        # =================================================
 
         if reached_five:
 
@@ -1006,8 +1117,13 @@ async def handle_game_message(
                 "💎 <b>لـقـد أثـبـتَّ أنـك مـن "
                 "أسـاطـيـر تـحـدي الـغـبـاش!</b> 💎\n\n"
 
-                "🥇 <b>أنـت الآن بطل الجولة!</b> 🥇\n"
-                "⚡ <b>والآن... هل تستطيع أن تبدأ من جديد؟</b> ⚡"
+                f"⭐ <b>رصـيـدك الـتـراكـمـي الآن: "
+                f"{total_points} نـقـطـة</b> ⭐\n\n"
+
+                "🔄 <b>تـم تـصـفـيـر عـداد الانـتـصـارات "
+                "الـمـتـتـالـيـة فـقـط.</b>\n\n"
+
+                "📊 <b>إلـيـكـم دفـتـر نـتـائـج الـغـبـاش:</b>"
             )
 
             try:
@@ -1026,9 +1142,7 @@ async def handle_game_message(
                 )
 
             # -------------------------------------------------
-            # تصفير عداد الفوز فقط
-            #
-            # النقاط التراكمية لا تتغير
+            # تصفير عداد الانتصارات فقط
             # -------------------------------------------------
 
             player[
@@ -1036,7 +1150,13 @@ async def handle_game_message(
             ] = 0
 
             # -------------------------------------------------
-            # إرسال دفتر النتائج بعد رسالة الفوز
+            # النقاط لا يتم تصفيرها
+            # -------------------------------------------------
+
+            # player["points"] تبقى كما هي.
+
+            # -------------------------------------------------
+            # إرسال دفتر النتائج
             # -------------------------------------------------
 
             scoreboard_text = build_scoreboard_text(
@@ -1059,9 +1179,21 @@ async def handle_game_message(
                     f"بعد الخمس انتصارات: {e}"
                 )
 
-        # -------------------------------------------------
-        # الانتقال للسؤال التالي
-        # -------------------------------------------------
+        # =================================================
+        # الانتقال الداخلي للسؤال التالي
+        # =================================================
+        #
+        # مهم جداً:
+        #
+        # نحن نزيد رقم السؤال فقط.
+        #
+        # لا نرسل صورة السؤال التالي هنا.
+        #
+        # السؤال التالي سيظهر فقط عندما يكتب أحد:
+        #
+        # غباش
+        #
+        # =================================================
 
         game[
             "question_index"
@@ -1074,6 +1206,17 @@ async def handle_game_message(
             game[
                 "question_index"
             ] = 0
+
+        # -------------------------------------------------
+        # يبقى winner_found=True
+        #
+        # حتى يمنع أي إجابات أخرى.
+        #
+        # عند كتابة "غباش" سيتم:
+        # - أخذ السؤال الجديد
+        # - تغيير winner_found إلى False
+        # - إرسال الصورة
+        # -------------------------------------------------
 
 
 # =========================================================
@@ -1152,29 +1295,21 @@ async def callback_handler(
 
             await query.message.delete()
 
-        except Exception:
+        except Exception as e:
 
-            pass
+            print(
+                f"⚠️ تعذر حذف دفتر النتائج: {e}"
+            )
 
         await query.answer()
 
         return
 
     # =====================================================
-    # السابق / التالي
+    # أي Callback غير معروف
     # =====================================================
 
-    if data in [
-        "prev_score",
-        "next_score"
-    ]:
-
-        await query.answer(
-            "📊 جميع النتائج موجودة في دفتر النتائج الحالي.",
-            show_alert=True
-        )
-
-        return
+    await query.answer()
 
 
 # =========================================================
@@ -1184,26 +1319,19 @@ async def callback_handler(
 def setup_game_handlers(app):
 
     # -----------------------------------------------------
-    # بدء اللعبة فقط عند كتابة "غباش"
+    # Handler واحد فقط لكل الرسائل النصية
+    #
+    # داخله يتم فحص:
+    #
+    # "غباش" = بدء اللعبة
+    # أي كلمة أخرى = محاولة إجابة
+    #
+    # وهذا يحل مشكلة Regex السابقة.
     # -----------------------------------------------------
 
     app.add_handler(
         MessageHandler(
-            filters.Regex(
-                r"^غباش$"
-            ),
-            start_game
-        )
-    )
-
-    # -----------------------------------------------------
-    # استقبال إجابات اللاعبين
-    # -----------------------------------------------------
-
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT
-            & (~filters.COMMAND),
+            filters.TEXT & (~filters.COMMAND),
             handle_game_message
         )
     )
@@ -1215,12 +1343,7 @@ def setup_game_handlers(app):
     app.add_handler(
         CallbackQueryHandler(
             callback_handler,
-            pattern=(
-                r"^(show_scoreboard|"
-                r"close_score|"
-                r"prev_score|"
-                r"next_score)$"
-            )
+            pattern=r"^(show_scoreboard|close_score)$"
         )
     )
 
