@@ -6,11 +6,12 @@ from telegram.ext import ContextTypes, MessageHandler, CallbackQueryHandler, fil
 GAMES_LIST = [
     {
         "id": 3,
-        "spoiler_file_id": "5834769018319998988",
-        "answer_file_id": "5834769018319998989",
-        "correct_answer": "ميران",
+        "spoiler_file_id": "AgACAgQAAxkBAAM4aqAOgoSz2xm4ouiLmWr0UAK08i4AAgwQaxuCQ_lQU3f7CtC9CssBAAMCAAN5AAM9BA",
+        "answer_file_id": "AgACAgQAAxkBAAM-aqAQvrNbpcZ7pda2HT6DU7LDy3YAAg0QaxuCQ_lQ9c6BscarZs0BAAMCAAN5AAM9BA",
+        "correct_answer": "ميران"
     }
 ]
+
 
 active_games = {}
 user_scores = {}
